@@ -36,6 +36,11 @@
         rel="stylesheet"
         href="style.css"
     >
+<script>
+    const sessao = localStorage.getItem("usuarioLogado");
+    if (!sessao) window.location.href = "login.html";
+    const usuario = sessao ? JSON.parse(sessao) : null;
+</script>
 </head>
 
 <body>
@@ -43,7 +48,6 @@
     <!-- =====================================================
          SIDEBAR
     ====================================================== -->
-
     <aside class="sidebar" id="sidebar">
 
         <div class="brand">
@@ -127,7 +131,10 @@
             </div>
 
         </div>
-
+            <button class="nav-item" onclick="sair()">
+      <span class="nav-icon">⎋</span>
+      <span>Sair</span>
+    </button>
     </aside>
 
 

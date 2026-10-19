@@ -3168,3 +3168,7 @@ function isTyping() {
     );
 
 }
+function sair() {
+  localStorage.removeItem("usuarioLogado");
+  window.location.href = "login.html";
+}
