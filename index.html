@@ -100,6 +100,30 @@
 
             <button
                 class="nav-item"
+                data-section="minhas-reservas"
+            >
+                <span class="nav-icon">★</span>
+                <span>Minhas reservas</span>
+            </button>
+
+            <button
+                class="nav-item"
+                data-section="historico"
+            >
+                <span class="nav-icon">◷</span>
+                <span>Histórico</span>
+            </button>
+
+            <button
+                class="nav-item"
+                data-section="relatorios"
+            >
+                <span class="nav-icon">▥</span>
+                <span>Relatórios</span>
+            </button>
+
+            <button
+                class="nav-item"
                 data-section="buscar-sala"
             >
                 <span class="nav-icon">⌕</span>
@@ -124,17 +148,17 @@
                 <span class="status-dot"></span>
 
                 <div>
-                    <strong>Sistema online</strong>
-                    <small>Dados salvos localmente</small>
+                    <strong id="loggedUserName">Sistema online</strong>
+                    <small id="loggedUserEmail">Dados salvos localmente</small>
                 </div>
 
             </div>
 
         </div>
-            <button class="nav-item" onclick="sair()">
-      <span class="nav-icon">⎋</span>
-      <span>Sair</span>
-    </button>
+        <button class="nav-item logout-button" onclick="sair()">
+            <span class="nav-icon">⎋</span>
+            <span>Sair</span>
+        </button>
     </aside>
 
 
@@ -619,6 +643,204 @@
                 </table>
 
             </div>
+
+        </section>
+
+
+        <!-- =================================================
+             MINHAS RESERVAS
+        ================================================== -->
+
+        <section
+            class="page-section"
+            id="minhas-reservas"
+        >
+
+            <div class="section-toolbar">
+
+                <div>
+
+                    <span class="eyebrow">
+                        SUA CONTA
+                    </span>
+
+                    <h2>Minhas reservas</h2>
+
+                </div>
+
+                <button
+                    class="primary-button"
+                    id="myNewReservation"
+                    type="button"
+                >
+                    <span>+</span>
+                    Nova reserva
+                </button>
+
+            </div>
+
+
+            <p class="my-summary" id="mySummary"></p>
+
+
+            <div class="dashboard-grid">
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <div>
+                            <span class="eyebrow">
+                                PRÓXIMAS
+                            </span>
+
+                            <h3>Agendadas</h3>
+                        </div>
+                    </div>
+
+                    <div id="myUpcoming"></div>
+
+                </div>
+
+
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <div>
+                            <span class="eyebrow">
+                                HISTÓRICO
+                            </span>
+
+                            <h3>Já aconteceram</h3>
+                        </div>
+                    </div>
+
+                    <div id="myPast"></div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             HISTÓRICO GERAL
+        ================================================== -->
+
+        <section
+            class="page-section"
+            id="historico"
+        >
+
+            <div class="section-toolbar">
+
+                <div>
+
+                    <span class="eyebrow">
+                        REGISTRO
+                    </span>
+
+                    <h2>Histórico de agendamentos</h2>
+
+                </div>
+
+            </div>
+
+
+            <div class="history-stats" id="historyStats"></div>
+
+
+            <div class="filters history-filters">
+
+                <div class="search-box">
+
+                    <span>⌕</span>
+
+                    <input
+                        type="search"
+                        id="historySearch"
+                        placeholder="Buscar por pessoa, sala ou finalidade..."
+                    >
+
+                </div>
+
+                <select id="historyType">
+                    <option value="all">Todas as ações</option>
+                    <option value="criada">Reservas feitas</option>
+                    <option value="editada">Reservas editadas</option>
+                    <option value="cancelada">Reservas canceladas</option>
+                </select>
+
+                <select id="historyRoom">
+                    <option value="all">Todas as salas</option>
+                </select>
+
+            </div>
+
+
+            <div class="panel history-panel">
+
+                <div id="historyList"></div>
+
+                <button
+                    class="secondary-button history-more"
+                    id="historyMore"
+                    type="button"
+                    hidden
+                >
+                    Mostrar mais
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             RELATÓRIOS
+        ================================================== -->
+
+        <section
+            class="page-section"
+            id="relatorios"
+        >
+
+            <div class="section-toolbar">
+
+                <div>
+
+                    <span class="eyebrow">
+                        ANÁLISE
+                    </span>
+
+                    <h2>Relatório de uso</h2>
+
+                </div>
+
+                <div class="rp-tools">
+
+                    <div class="rp-period" id="reportPeriod">
+                        <button type="button" data-period="week">Semana</button>
+                        <button type="button" data-period="month" class="on">Mês</button>
+                        <button type="button" data-period="semester">Semestre</button>
+                    </div>
+
+                    <select class="rp-month" id="reportRange"></select>
+
+                    <button
+                        class="secondary-button rp-print"
+                        id="reportPrint"
+                        type="button"
+                    >
+                        <span class="rp-print-icon"></span>
+                        Baixar PDF
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div id="reportContent"></div>
 
         </section>
 
