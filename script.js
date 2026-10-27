@@ -112,6 +112,7 @@ const ROOM_ICONS = ["▣", "◇", "▦", "○", "△", "□", "◈", "▤", "⬡
 const STORAGE_KEYS = {
     rooms: "conecta_rooms",
     reservations: "conecta_reservations",
+    history: "conecta_historico",
     theme: "conecta_theme"
 };
 
@@ -157,6 +158,11 @@ const ICON_PATHS = {
     livro: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5"/><path d="M9 7.5h7"/>',
     conversa: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-5 4.5V16h-.5"/><path d="M8.5 8.5h7M8.5 11.5h4.5"/>',
     sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
+    relatorios: '<path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M21 20H3"/>',
+    download: '<path d="M12 4v11"/><path d="m8 11 4 4 4-4"/><path d="M5 20h14"/>',
+    historico: '<path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3 4v4.5h4.5"/><path d="M12 7.5V12l3 2"/>',
+    usuario: '<circle cx="12" cy="8" r="4"/><path d="M4 20.5a8 8 0 0 1 16 0"/>',
+    sair: '<path d="M14 4.5h3.5A2.5 2.5 0 0 1 20 7v10a2.5 2.5 0 0 1-2.5 2.5H14"/><path d="M10 16.5 5.5 12 10 7.5M5.5 12H15"/>',
     lua: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
     lapis: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
     lixeira: '<path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 12.5A1.5 1.5 0 0 0 8.5 21h7a1.5 1.5 0 0 0 1.5-1.5L18 7M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"/>',
@@ -194,7 +200,10 @@ function applyIcons() {
         salas: "salas",
         reservas: "reservas",
         "buscar-sala": "buscar",
-        "criar-sala": "criar"
+        "criar-sala": "criar",
+        "minhas-reservas": "usuario",
+        historico: "historico",
+        relatorios: "relatorios"
     };
 
     $$(".nav-item").forEach(item => {
@@ -210,6 +219,21 @@ function applyIcons() {
     });
 
     $("#exportButton").innerHTML = iconSVG("exportar");
+
+    // Botão Sair com o mesmo estilo de ícone do menu
+    const logoutIcon = $(".logout-button .nav-icon");
+    if (logoutIcon) logoutIcon.innerHTML = iconSVG("sair");
+
+    // Mostra quem está logado no rodapé do menu
+    try {
+        const sessao = JSON.parse(localStorage.getItem("usuarioLogado"));
+        if (sessao && sessao.nome) {
+            $("#loggedUserName").textContent = `Olá, ${sessao.nome.split(" ")[0]}`;
+            $("#loggedUserEmail").textContent = sessao.email || "";
+        }
+    } catch (error) {
+        // sem sessão salva: mantém o texto padrão
+    }
 
     const searchIcon = $(".search-box > span");
     if (searchIcon) searchIcon.innerHTML = iconSVG("buscar");
@@ -248,6 +272,8 @@ function initialize() {
     setupRoomForm();
     setupResourcePickers();
     setupSearch();
+    setupHistory();
+    setupReport();
     renderAll();
 
 
@@ -258,6 +284,7 @@ function initialize() {
         renderTodaySchedule();
         renderRecentReservations();
         renderRooms();
+        renderMyReservations();
     }, 60 * 1000);
 
 }
@@ -336,6 +363,9 @@ function navigateTo(section) {
         salas: "Salas",
         reservas: "Reservas",
         "criar-sala": "Criar Sala",
+        "minhas-reservas": "Minhas reservas",
+        historico: "Histórico",
+        relatorios: "Relatórios",
         "buscar-sala": "Buscar sala"
     };
 
@@ -356,6 +386,19 @@ function navigateTo(section) {
         runSearch();
     }
 
+    if (section === "minhas-reservas") {
+        renderMyReservations();
+    }
+
+    if (section === "historico") {
+        historyLimit = HISTORY_PAGE;
+        renderHistory();
+    }
+
+    if (section === "relatorios") {
+        renderReport();
+    }
+
 }
 
 
@@ -364,6 +407,8 @@ function navigateTo(section) {
 ========================================================= */
 
 function setupModal() {
+
+    $("#myNewReservation").addEventListener("click", () => openReservationModal());
 
     $("#newReservationButton").addEventListener(
         "click",
@@ -496,6 +541,14 @@ function openReservationModal(options = {}) {
     }
 
 
+    // Nova reserva: o responsável já vem com o nome de quem está logado
+    const currentUser = getCurrentUser();
+
+    if (!options.id && currentUser) {
+        $("#responsible").value = currentUser.nome;
+    }
+
+
     if (options.id) {
 
         const reservation = reservations.find(
@@ -503,6 +556,12 @@ function openReservationModal(options = {}) {
         );
 
         if (!reservation) return;
+
+        // Só quem fez a reserva pode editar
+        if (!canManageReservation(reservation)) {
+            showToast(`Só ${getOwnerName(reservation)} pode editar esta reserva.`, "warning");
+            return;
+        }
 
         $("#room").value = reservation.room;
         $("#date").value = reservation.date;
@@ -584,12 +643,21 @@ function handleReservationSubmit(event) {
 
     if (editingReservationId) {
 
+        const original = reservations.find(item => item.id === editingReservationId);
+
+        if (original && !canManageReservation(original)) {
+            showToast(`Só ${getOwnerName(original)} pode editar esta reserva.`, "error");
+            return;
+        }
+
         const index = reservations.findIndex(
             item => item.id === editingReservationId
         );
 
 
         if (index !== -1) {
+
+            const before = { ...reservations[index] };
 
             reservations[index] = {
                 ...reservations[index],
@@ -602,6 +670,13 @@ function handleReservationSubmit(event) {
                 participants: Number($("#participants").value) || null,
                 roomName: roomInfo.name
             };
+
+            const changes = describeChanges(before, reservations[index]);
+
+            // Só registra se algo realmente mudou
+            if (changes.length) {
+                logHistory("editada", reservations[index], { changes });
+            }
 
         }
 
@@ -618,6 +693,8 @@ function handleReservationSubmit(event) {
 
 
     const dates = getOccurrenceDates();
+
+    const currentUser = getCurrentUser();
 
     const seriesId = dates.length > 1 ? createId() : null;
 
@@ -637,10 +714,21 @@ function handleReservationSubmit(event) {
             purpose,
             participants: Number($("#participants").value) || null,
             seriesId,
+            ownerEmail: currentUser ? currentUser.email : null,
+            ownerName: currentUser ? currentUser.nome : null,
             createdAt: new Date().toISOString()
 
         });
 
+    });
+
+
+    // Registra no histórico (uma linha por reserva ou por série semanal)
+    const created = reservations.slice(-dates.length);
+
+    logHistory("criada", created[0], {
+        count: dates.length,
+        until: dates.length > 1 ? dates[dates.length - 1] : null
     });
 
 
@@ -1180,6 +1268,10 @@ function migrateOldStorage() {
 ========================================================= */
 
 function renderAll() {
+
+    renderMyReservations();
+    renderHistory();
+    renderReport();
 
     runSearch();
 
@@ -1860,7 +1952,10 @@ function renderReservationsTable() {
 
                 <td><strong>${formatRange(item)}</strong></td>
 
-                <td>${escapeHTML(item.responsible)}</td>
+                <td>
+                    ${escapeHTML(item.responsible)}
+                    ${isMine(item) ? `<span class="mine-badge">Você</span>` : ""}
+                </td>
 
                 <td>${escapeHTML(item.purpose || "—")}</td>
 
@@ -1952,6 +2047,14 @@ function showReservationDetails(id) {
             </div>
 
             <div class="detail-row">
+                <span>Reservado por</span>
+                <strong>
+                    ${escapeHTML(getOwnerName(reservation))}
+                    ${isMine(reservation) ? `<span class="mine-badge">Você</span>` : ""}
+                </strong>
+            </div>
+
+            <div class="detail-row">
                 <span>Participantes</span>
                 <strong>${reservation.participants ? `${reservation.participants} pessoas` : "Não informado"}</strong>
             </div>
@@ -1968,21 +2071,28 @@ function showReservationDetails(id) {
                 </div>
             ` : ""}
 
-            <div class="modal-footer">
+            ${canManageReservation(reservation) ? `
+                <div class="modal-footer">
 
-                <button class="secondary-button" id="editReservation">
-                    Editar
-                </button>
+                    <button class="secondary-button" id="editReservation">
+                        Editar
+                    </button>
 
-                <button
-                    class="primary-button"
-                    id="deleteReservation"
-                    style="background: var(--danger);"
-                >
-                    Cancelar reserva
-                </button>
+                    <button
+                        class="primary-button"
+                        id="deleteReservation"
+                        style="background: var(--danger);"
+                    >
+                        Cancelar reserva
+                    </button>
 
-            </div>
+                </div>
+            ` : `
+                <p class="details-locked">
+                    Esta reserva foi feita por <strong>${escapeHTML(getOwnerName(reservation))}</strong>.
+                    Só essa pessoa pode editar ou cancelar.
+                </p>
+            `}
 
         </div>
 
@@ -1992,18 +2102,22 @@ function showReservationDetails(id) {
     $("#detailsModal").classList.add("active");
 
 
-    $("#editReservation").addEventListener("click", () => {
+    if (canManageReservation(reservation)) {
 
-        closeDetailsModal();
+        $("#editReservation").addEventListener("click", () => {
 
-        openReservationModal({ id });
+            closeDetailsModal();
 
-    });
+            openReservationModal({ id });
+
+        });
 
 
-    $("#deleteReservation").addEventListener("click", () =>
-        deleteReservation(id)
-    );
+        $("#deleteReservation").addEventListener("click", () =>
+            deleteReservation(id)
+        );
+
+    }
 
 }
 
@@ -2026,11 +2140,18 @@ async function deleteReservation(id) {
     if (!reservation) return;
 
 
+    if (!canManageReservation(reservation)) {
+        showToast(`Só ${getOwnerName(reservation)} pode cancelar esta reserva.`, "error");
+        return;
+    }
+
+
     // Outras reservas da mesma repetição semanal que ainda não aconteceram
     const series = reservation.seriesId
         ? reservations.filter(item =>
             item.seriesId === reservation.seriesId &&
-            !isPast(item)
+            !isPast(item) &&
+            canManageReservation(item)
         )
         : [];
 
@@ -2055,9 +2176,16 @@ async function deleteReservation(id) {
 
         const ids = new Set(series.map(item => item.id));
 
+        logHistory("cancelada", series[0], {
+            count: series.length,
+            until: series[series.length - 1].date
+        });
+
         reservations = reservations.filter(item => !ids.has(item.id));
 
     } else {
+
+        logHistory("cancelada", reservation);
 
         reservations = reservations.filter(item => item.id !== id);
 
@@ -2872,6 +3000,915 @@ function showSearchPastHelp(date) {
 
 
 /* =========================================================
+   USUÁRIO LOGADO E PERMISSÕES
+========================================================= */
+
+// Usuário que fez login (salvo pela tela de login)
+function getCurrentUser() {
+
+    try {
+        return JSON.parse(localStorage.getItem("usuarioLogado"));
+    } catch (error) {
+        return null;
+    }
+
+}
+
+
+// A reserva é de quem está logado?
+function isMine(reservation) {
+
+    const user = getCurrentUser();
+
+    return Boolean(
+        user &&
+        reservation.ownerEmail &&
+        reservation.ownerEmail === user.email
+    );
+
+}
+
+
+// Pode editar/cancelar: quem criou a reserva.
+// Reservas antigas, feitas antes do login existir, não têm dono e continuam liberadas.
+function canManageReservation(reservation) {
+
+    if (!reservation.ownerEmail) return true;
+
+    return isMine(reservation);
+
+}
+
+
+function getOwnerName(reservation) {
+
+    if (!reservation.ownerEmail) return "Não registrado";
+
+    return reservation.ownerName || reservation.ownerEmail;
+
+}
+
+
+/* =========================================================
+   MINHAS RESERVAS
+========================================================= */
+
+function renderMyReservations() {
+
+    const upcomingBox = $("#myUpcoming");
+
+    if (!upcomingBox) return;
+
+
+    const mine = reservations
+        .filter(isMine)
+        .sort((a, b) =>
+            `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`)
+        );
+
+    const upcoming = mine.filter(item => !isPast(item));
+
+    const past = mine.filter(isPast).reverse().slice(0, 10);
+
+
+    const user = getCurrentUser();
+
+    const hours = upcoming.reduce((sum, item) => sum + getDuration(item), 0) / 60;
+
+    $("#mySummary").innerHTML = user
+        ? `<strong>${escapeHTML(user.nome)}</strong>, você tem <strong>${upcoming.length}</strong> ${upcoming.length === 1 ? "reserva agendada" : "reservas agendadas"}${upcoming.length ? ` (${hours.toLocaleString("pt-BR")} h no total)` : ""}.`
+        : "Entre com sua conta para ver suas reservas.";
+
+
+    const row = item => `
+
+        <div class="schedule-item my-item" data-id="${item.id}" data-color="${getRoomColor(item.room)}">
+
+            <div class="schedule-time">
+                ${item.date === getTodayString() ? "Hoje" : formatDate(item.date).slice(0, 5)}
+                <small>${formatRange(item)}</small>
+            </div>
+
+            <div class="schedule-main">
+                <strong>${escapeHTML(item.roomName)}</strong>
+                <span>${escapeHTML(item.purpose || "Sem finalidade")}${item.seriesId ? " · toda semana" : ""}</span>
+            </div>
+
+            <span class="schedule-status ${isPast(item) ? "state-past" : isHappeningNow(item) ? "state-now" : "state-upcoming"}">
+                ${getReservationStatus(item)}
+            </span>
+
+        </div>
+
+    `;
+
+
+    upcomingBox.innerHTML = upcoming.length
+        ? upcoming.map(row).join("")
+        : `
+            <div class="empty-state">
+                <div class="empty-icon">${iconSVG("agenda")}</div>
+                <p>Você não tem reservas agendadas.</p>
+            </div>
+        `;
+
+    $("#myPast").innerHTML = past.length
+        ? past.map(row).join("")
+        : `
+            <div class="empty-state">
+                <div class="empty-icon">${iconSVG("reservas")}</div>
+                <p>Nenhuma reserva anterior.</p>
+            </div>
+        `;
+
+
+    $$("#minhas-reservas .my-item").forEach(element => {
+
+        element.addEventListener("click", () =>
+            showReservationDetails(element.dataset.id)
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   HISTÓRICO GERAL DE AGENDAMENTOS
+   Guarda cada ação (reserva feita, editada ou cancelada),
+   mesmo depois que a reserva deixa de existir.
+========================================================= */
+
+const HISTORY_PAGE = 40;
+
+let historyLimit = HISTORY_PAGE;
+
+
+function loadHistory() {
+
+    try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEYS.history));
+        if (Array.isArray(saved)) return saved;
+    } catch (error) {
+        // dados corrompidos: começa do zero
+    }
+
+    return null;
+
+}
+
+
+function saveHistory(list) {
+
+    localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(list));
+
+}
+
+
+// Na primeira vez, cria o histórico a partir das reservas que já existem
+function getHistory() {
+
+    let list = loadHistory();
+
+    if (list) return list;
+
+
+    list = reservations.map(item => ({
+        id: createId(),
+        type: "criada",
+        at: item.createdAt || "",
+        byName: item.ownerName || "Não registrado",
+        byEmail: item.ownerEmail || null,
+        reservation: snapshotReservation(item),
+        count: 1,
+        imported: true
+    }));
+
+    saveHistory(list);
+
+    return list;
+
+}
+
+
+// Cópia só dos dados que o histórico precisa mostrar
+function snapshotReservation(item) {
+
+    return {
+        room: item.room,
+        roomName: item.roomName,
+        date: item.date,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        responsible: item.responsible,
+        purpose: item.purpose || ""
+    };
+
+}
+
+
+function logHistory(type, reservation, extra = {}) {
+
+    if (!reservation) return;
+
+    const user = getCurrentUser();
+
+    const list = getHistory();
+
+    list.push({
+        id: createId(),
+        type,
+        at: new Date().toISOString(),
+        byName: user ? user.nome : "Não registrado",
+        byEmail: user ? user.email : null,
+        reservation: snapshotReservation(reservation),
+        count: extra.count || 1,
+        until: extra.until || null,
+        changes: extra.changes || []
+    });
+
+    saveHistory(list);
+
+}
+
+
+// Lista o que mudou numa edição (sala, data, horário, responsável...)
+function describeChanges(before, after) {
+
+    const changes = [];
+
+    if (before.room !== after.room) {
+        changes.push(`sala: ${before.roomName} → ${after.roomName}`);
+    }
+
+    if (before.date !== after.date) {
+        changes.push(`data: ${formatDate(before.date)} → ${formatDate(after.date)}`);
+    }
+
+    if (before.startTime !== after.startTime || before.endTime !== after.endTime) {
+        changes.push(`horário: ${formatRange(before)} → ${formatRange(after)}`);
+    }
+
+    if (before.responsible !== after.responsible) {
+        changes.push(`responsável: ${before.responsible} → ${after.responsible}`);
+    }
+
+    if ((before.purpose || "") !== (after.purpose || "")) {
+        changes.push("finalidade alterada");
+    }
+
+    if ((before.participants || null) !== (after.participants || null)) {
+        changes.push(`participantes: ${before.participants || "—"} → ${after.participants || "—"}`);
+    }
+
+    return changes;
+
+}
+
+
+function setupHistory() {
+
+    // Garante que as reservas antigas entrem no histórico antes de qualquer ação nova
+    getHistory();
+
+    const roomFilter = $("#historyRoom");
+
+    if (!roomFilter) return;
+
+
+    ["#historySearch", "#historyType", "#historyRoom"].forEach(selector => {
+        $(selector).addEventListener("input", () => {
+            historyLimit = HISTORY_PAGE;
+            renderHistory();
+        });
+    });
+
+    $("#historyMore").addEventListener("click", () => {
+        historyLimit += HISTORY_PAGE;
+        renderHistory();
+    });
+
+    const searchIcon = $("#historico .search-box > span");
+    if (searchIcon) searchIcon.innerHTML = iconSVG("buscar");
+
+}
+
+
+function renderHistory() {
+
+    const container = $("#historyList");
+
+    if (!container) return;
+
+
+    // Atualiza a lista de salas do filtro (inclui salas que já foram excluídas)
+    const roomFilter = $("#historyRoom");
+    const currentRoom = roomFilter.value;
+
+    const all = getHistory()
+        .slice()
+        .sort((a, b) => (b.at || "").localeCompare(a.at || ""));
+
+    const roomNames = new Map();
+
+    rooms.forEach(room => roomNames.set(room.id, room.name));
+    all.forEach(event => {
+        if (!roomNames.has(event.reservation.room)) {
+            roomNames.set(event.reservation.room, event.reservation.roomName);
+        }
+    });
+
+    roomFilter.innerHTML =
+        `<option value="all">Todas as salas</option>` +
+        [...roomNames].map(([id, name]) =>
+            `<option value="${id}">${escapeHTML(name)}</option>`
+        ).join("");
+
+    if ([...roomNames.keys()].includes(currentRoom)) {
+        roomFilter.value = currentRoom;
+    }
+
+
+    // Números do topo (sempre sobre o histórico inteiro)
+    const total = type => all
+        .filter(event => event.type === type)
+        .reduce((sum, event) => sum + (event.count || 1), 0);
+
+    const people = new Set(all.map(event => event.byEmail || event.byName));
+
+    $("#historyStats").innerHTML = `
+        <div class="history-stat"><strong>${total("criada")}</strong><span>${total("criada") === 1 ? "reserva feita" : "reservas feitas"}</span></div>
+        <div class="history-stat"><strong>${total("editada")}</strong><span>${total("editada") === 1 ? "edição" : "edições"}</span></div>
+        <div class="history-stat"><strong>${total("cancelada")}</strong><span>${total("cancelada") === 1 ? "cancelamento" : "cancelamentos"}</span></div>
+        <div class="history-stat"><strong>${people.size}</strong><span>${people.size === 1 ? "pessoa" : "pessoas"}</span></div>
+    `;
+
+
+    // Filtros
+    const search = $("#historySearch").value.toLowerCase().trim();
+    const type = $("#historyType").value;
+    const room = roomFilter.value;
+
+    const filtered = all.filter(event => {
+
+        if (type !== "all" && event.type !== type) return false;
+
+        if (room !== "all" && event.reservation.room !== room) return false;
+
+        if (search) {
+            const text = [
+                event.byName,
+                event.reservation.roomName,
+                event.reservation.responsible,
+                event.reservation.purpose
+            ].join(" ").toLowerCase();
+
+            if (!text.includes(search)) return false;
+        }
+
+        return true;
+
+    });
+
+
+    if (!filtered.length) {
+
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">${iconSVG("historico")}</div>
+                <p>${all.length ? "Nada encontrado com esses filtros." : "Nenhum agendamento registrado ainda."}</p>
+            </div>
+        `;
+
+        $("#historyMore").hidden = true;
+
+        return;
+
+    }
+
+
+    const visible = filtered.slice(0, historyLimit);
+
+    const verbs = {
+        criada: "reservou",
+        editada: "editou a reserva da",
+        cancelada: "cancelou a reserva da"
+    };
+
+    let lastDay = "";
+
+    container.innerHTML = visible.map(event => {
+
+        const when = new Date(event.at);
+        const dayKey = event.at ? toDateString(when) : "anterior";
+
+        let dayHeader = "";
+
+        if (dayKey !== lastDay) {
+            lastDay = dayKey;
+            dayHeader = `<div class="history-day">${dayKey === "anterior" ? "Antes do histórico existir" : getDayLabel(dayKey)}</div>`;
+        }
+
+        const r = event.reservation;
+
+        const target = event.count > 1
+            ? `${event.count} reservas semanais, de ${formatDate(r.date).slice(0, 5)} até ${formatDate(event.until).slice(0, 5)}, ${formatRange(r)}`
+            : `${formatDate(r.date)}, ${formatRange(r)}`;
+
+        const changes = event.changes && event.changes.length
+            ? `<span class="history-changes">${event.changes.map(escapeHTML).join(" · ")}</span>`
+            : "";
+
+        const time = !event.at
+            ? ""
+            : `${String(when.getHours()).padStart(2, "0")}:${String(when.getMinutes()).padStart(2, "0")}`;
+
+        return `
+            ${dayHeader}
+            <div class="history-item type-${event.type}">
+
+                <span class="history-icon">${iconSVG(event.type === "criada" ? "criar" : event.type === "editada" ? "lapis" : "lixeira")}</span>
+
+                <div class="history-text">
+                    <p>
+                        <strong>${escapeHTML(event.byName)}</strong>
+                        ${verbs[event.type]}
+                        <strong class="history-room" data-color="${getRoomColor(r.room)}">${escapeHTML(r.roomName)}</strong>
+                        <span class="history-when">· ${target}</span>
+                    </p>
+                    <span class="history-meta">
+                        ${r.purpose ? escapeHTML(r.purpose) + " · " : ""}Responsável: ${escapeHTML(r.responsible)}
+                    </span>
+                    ${changes}
+                </div>
+
+                <span class="history-time">${time}</span>
+
+            </div>
+        `;
+
+    }).join("");
+
+
+    $("#historyMore").hidden = filtered.length <= historyLimit;
+
+    $("#historyMore").textContent =
+        `Mostrar mais (${filtered.length - historyLimit} restantes)`;
+
+}
+
+
+function getDayLabel(dayKey) {
+
+    const today = getTodayString();
+
+    if (dayKey === today) return "Hoje";
+
+    if (dayKey === addDays(today, -1)) return "Ontem";
+
+    return capitalize(formatLongDate(dayKey));
+
+}
+
+
+/* =========================================================
+   RELATÓRIOS
+   Números calculados a partir das reservas e do histórico.
+========================================================= */
+
+const MONTH_NAMES = [
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
+];
+
+const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+const WEEK_DAYS_LONG = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+
+let reportPeriod = "month";
+
+
+function setupReport() {
+
+    if (!$("#reportContent")) return;
+
+
+    $$("#reportPeriod button").forEach(button => {
+
+        button.addEventListener("click", () => {
+
+            reportPeriod = button.dataset.period;
+
+            $$("#reportPeriod button").forEach(item =>
+                item.classList.toggle("on", item === button)
+            );
+
+            fillReportRanges();
+            renderReport();
+
+        });
+
+    });
+
+    $("#reportRange").addEventListener("change", renderReport);
+
+    $("#reportPrint").addEventListener("click", () => window.print());
+
+    $(".rp-print-icon").innerHTML = iconSVG("download");
+
+    fillReportRanges();
+
+}
+
+
+function parseDate(dateString) {
+
+    const [year, month, day] = dateString.split("-").map(Number);
+
+    return new Date(year, month - 1, day);
+
+}
+
+
+// Monta a lista de períodos (semanas, meses ou semestres) do seletor
+function fillReportRanges() {
+
+    const select = $("#reportRange");
+
+    const today = parseDate(getTodayString());
+
+    const options = [];
+
+
+    if (reportPeriod === "week") {
+
+        // Semana de segunda a domingo
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+
+        for (let i = 4; i >= -12; i--) {
+
+            const start = new Date(monday);
+            start.setDate(monday.getDate() + i * 7);
+
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+
+            const s = toDateString(start);
+            const e = toDateString(end);
+
+            const label = i === 0
+                ? `Esta semana (${formatDate(s).slice(0, 5)} a ${formatDate(e).slice(0, 5)})`
+                : `${formatDate(s).slice(0, 5)} a ${formatDate(e).slice(0, 5)}`;
+
+            options.push({ value: `${s}|${e}`, label, current: i === 0 });
+
+        }
+
+    }
+
+
+    if (reportPeriod === "month") {
+
+        for (let i = 2; i >= -12; i--) {
+
+            const start = new Date(today.getFullYear(), today.getMonth() + i, 1);
+            const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+
+            options.push({
+                value: `${toDateString(start)}|${toDateString(end)}`,
+                label: `${capitalize(MONTH_NAMES[start.getMonth()])} de ${start.getFullYear()}`,
+                current: i === 0
+            });
+
+        }
+
+    }
+
+
+    if (reportPeriod === "semester") {
+
+        const currentHalf = today.getMonth() < 6 ? 0 : 1;
+
+        for (let i = 1; i >= -3; i--) {
+
+            const index = today.getFullYear() * 2 + currentHalf + i;
+            const year = Math.floor(index / 2);
+            const half = index % 2;
+
+            const start = new Date(year, half * 6, 1);
+            const end = new Date(year, half * 6 + 6, 0);
+
+            options.push({
+                value: `${toDateString(start)}|${toDateString(end)}`,
+                label: `${half + 1}º semestre de ${year}`,
+                current: i === 0
+            });
+
+        }
+
+    }
+
+
+    select.innerHTML = options.map(option =>
+        `<option value="${option.value}" ${option.current ? "selected" : ""}>${option.label}</option>`
+    ).join("");
+
+}
+
+
+// Período anterior de mesmo tamanho (para comparar)
+function getPreviousRange(start, end) {
+
+    const s = parseDate(start);
+
+    if (reportPeriod === "month") {
+        return [
+            toDateString(new Date(s.getFullYear(), s.getMonth() - 1, 1)),
+            toDateString(new Date(s.getFullYear(), s.getMonth(), 0))
+        ];
+    }
+
+    if (reportPeriod === "semester") {
+        return [
+            toDateString(new Date(s.getFullYear(), s.getMonth() - 6, 1)),
+            toDateString(new Date(s.getFullYear(), s.getMonth(), 0))
+        ];
+    }
+
+    return [addDays(start, -7), addDays(end, -7)];
+
+}
+
+
+function countWorkDays(start, end) {
+
+    let count = 0;
+
+    for (let day = start; day <= end; day = addDays(day, 1)) {
+        const weekDay = parseDate(day).getDay();
+        if (weekDay !== 0 && weekDay !== 6) count++;
+    }
+
+    return count;
+
+}
+
+
+function formatHours(minutes) {
+
+    const h = Math.floor(minutes / 60);
+    const m = Math.round(minutes % 60);
+
+    if (!h) return `${m} min`;
+
+    return m ? `${h}h${String(m).padStart(2, "0")}` : `${h} h`;
+
+}
+
+
+function renderReport() {
+
+    const container = $("#reportContent");
+
+    if (!container || !$("#reportRange").value) return;
+
+
+    const [start, end] = $("#reportRange").value.split("|");
+
+    const inRange = (date, s, e) => date >= s && date <= e;
+
+    const list = reservations.filter(item => inRange(item.date, start, end));
+
+    const [prevStart, prevEnd] = getPreviousRange(start, end);
+
+    const previous = reservations.filter(item => inRange(item.date, prevStart, prevEnd)).length;
+
+
+    const cancelled = getHistory()
+        .filter(event => event.type === "cancelada" && inRange(event.reservation.date, start, end))
+        .reduce((sum, event) => sum + (event.count || 1), 0);
+
+
+    const totalMinutes = list.reduce((sum, item) => sum + getDuration(item), 0);
+
+    const capacity = rooms.length * countWorkDays(start, end) * (DAY_END - DAY_START);
+
+    const occupancy = capacity ? Math.round(totalMinutes / capacity * 100) : 0;
+
+
+    // Comparação com o período anterior
+    const previousName = {
+        week: "à semana anterior",
+        month: `a ${MONTH_NAMES[(parseDate(start).getMonth() + 11) % 12]}`,
+        semester: "ao semestre anterior"
+    }[reportPeriod];
+
+    let trend = `<small>nenhuma reserva no período anterior</small>`;
+
+    if (previous) {
+
+        const change = Math.round((list.length - previous) / previous * 100);
+
+        trend = change === 0
+            ? `<small>igual ao período anterior</small>`
+            : `<small class="${change > 0 ? "up" : "down"}">${change > 0 ? "▲" : "▼"} ${Math.abs(change)}% em relação ${previousName}</small>`;
+
+    }
+
+    const periodLabel = { week: "na semana", month: "no mês", semester: "no semestre" }[reportPeriod];
+
+
+    const kpis = `
+        <div class="rp-kpis">
+            <div class="rp-kpi"><span>Reservas ${periodLabel}</span><strong>${list.length}</strong>${trend}</div>
+            <div class="rp-kpi"><span>Horas reservadas</span><strong>${formatHours(totalMinutes)}</strong><small>${list.length ? `média de ${formatHours(totalMinutes / list.length)} por reserva` : "nenhuma reserva"}</small></div>
+            <div class="rp-kpi"><span>Ocupação média</span><strong>${occupancy}%</strong><small>das 8h às 18h, dias úteis</small></div>
+            <div class="rp-kpi"><span>Cancelamentos</span><strong>${cancelled}</strong><small class="${cancelled ? "down" : ""}">${cancelled ? `${Math.round(cancelled / (list.length + cancelled) * 100)}% das reservas` : "nenhum cancelamento"}</small></div>
+        </div>
+    `;
+
+    const printTitle = `<h3 class="rp-print-title">Conec-ta · Relatório de uso · ${escapeHTML($("#reportRange").selectedOptions[0].textContent)}</h3>`;
+
+
+    if (!list.length) {
+
+        container.innerHTML = printTitle + kpis + `
+            <div class="panel">
+                <div class="empty-state">
+                    <div class="empty-icon">${iconSVG("relatorios")}</div>
+                    <p>Nenhuma reserva neste período. Escolha outro período acima.</p>
+                </div>
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    // Salas mais usadas (horas)
+    const byRoom = new Map();
+
+    rooms.forEach(room => byRoom.set(room.id, { id: room.id, name: room.name, minutes: 0 }));
+
+    list.forEach(item => {
+        if (!byRoom.has(item.room)) {
+            byRoom.set(item.room, { id: item.room, name: item.roomName, minutes: 0 });
+        }
+        byRoom.get(item.room).minutes += getDuration(item);
+    });
+
+    const roomRows = [...byRoom.values()].sort((a, b) => b.minutes - a.minutes);
+
+    const maxRoom = Math.max(...roomRows.map(row => row.minutes), 1);
+
+    const bars = roomRows.map(row => `
+        <div class="rp-bar" data-color="${getRoomColor(row.id)}">
+            <span>${escapeHTML(row.name)}</span>
+            <div><i style="width:${row.minutes / maxRoom * 100}%"></i></div>
+            <b>${row.minutes ? formatHours(row.minutes) : "—"}</b>
+        </div>
+    `).join("");
+
+
+    // Mapa de calor: quantas reservas ocupam cada hora de cada dia
+    const usedDays = new Set(list.map(item => parseDate(item.date).getDay()));
+
+    const heatDays = [1, 2, 3, 4, 5].concat([6, 0].filter(day => usedDays.has(day)));
+
+    const hoursOfDay = [];
+    for (let m = DAY_START; m < DAY_END; m += 60) hoursOfDay.push(m);
+
+    const heat = {};
+
+    list.forEach(item => {
+
+        const day = parseDate(item.date).getDay();
+        const s = toMinutes(item.startTime);
+        const e = toMinutes(item.endTime);
+
+        hoursOfDay.forEach(h => {
+            if (s < h + 60 && e > h) {
+                heat[`${day}-${h}`] = (heat[`${day}-${h}`] || 0) + 1;
+            }
+        });
+
+    });
+
+    const maxHeat = Math.max(...Object.values(heat), 1);
+
+    const level = value => value ? Math.max(1, Math.round(value / maxHeat * 5)) : 0;
+
+    const heatmap = `
+        <div class="rp-heat" style="grid-template-columns: 34px repeat(${hoursOfDay.length}, 1fr)">
+            <span></span>
+            ${hoursOfDay.map(h => `<em>${h / 60}h</em>`).join("")}
+            ${heatDays.map(day => `
+                <span>${WEEK_DAYS[day]}</span>
+                ${hoursOfDay.map(h => {
+                    const value = heat[`${day}-${h}`] || 0;
+                    return `<i class="l${level(value)}" title="${WEEK_DAYS[day]} às ${h / 60}h: ${value} ${value === 1 ? "reserva" : "reservas"}"></i>`;
+                }).join("")}
+            `).join("")}
+        </div>
+        <div class="rp-legend">menos <i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i> mais</div>
+    `;
+
+    // Ordena por dia da semana/hora para o texto sair em ordem
+    const peaks = Object.entries(heat)
+        .filter(([, value]) => value === maxHeat)
+        .map(([key]) => key.split("-").map(Number))
+        .sort((a, b) => ((a[0] + 6) % 7) - ((b[0] + 6) % 7) || a[1] - b[1]);
+
+    let peakText;
+
+    if (peaks.length > 3) {
+        peakText = `Vários horários empatam como os mais usados (${maxHeat} ${maxHeat === 1 ? "reserva" : "reservas"} cada).`;
+    } else {
+        const names = peaks.map(([day, h]) => `${WEEK_DAYS_LONG[day]} às ${h / 60}h`);
+        peakText = names.length > 1
+            ? `${capitalize(names.slice(0, -1).join(", "))} e ${names[names.length - 1]} são os horários mais disputados.`
+            : `${capitalize(names[0])} é o horário mais disputado.`;
+    }
+
+
+    // Quem mais reserva
+    const byPerson = new Map();
+
+    list.forEach(item => {
+        const name = item.ownerName || item.responsible || "Não registrado";
+        byPerson.set(name, (byPerson.get(name) || 0) + 1);
+    });
+
+    const ranking = [...byPerson].sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+    const initials = name => name.split(/\s+/).filter(Boolean).map(word => word[0]).slice(0, 2).join("").toUpperCase();
+
+    const rank = `
+        <ol class="rp-rank">
+            ${ranking.map(([name, total], index) => `
+                <li>
+                    <span class="rp-pos">${index + 1}</span>
+                    <span class="rp-av">${escapeHTML(initials(name))}</span>
+                    <span class="rp-name">${escapeHTML(name)}</span>
+                    <b>${total} ${total === 1 ? "reserva" : "reservas"}</b>
+                </li>
+            `).join("")}
+        </ol>
+    `;
+
+
+    // Reservas por dia da semana
+    const byDay = {};
+
+    list.forEach(item => {
+        const day = parseDate(item.date).getDay();
+        byDay[day] = (byDay[day] || 0) + 1;
+    });
+
+    const maxDay = Math.max(...Object.values(byDay), 1);
+
+    const columns = `
+        <div class="rp-cols">
+            ${heatDays.map(day => `
+                <div>
+                    <b>${byDay[day] || 0}</b>
+                    <i style="height:${(byDay[day] || 0) / maxDay * 100}%"></i>
+                    <span>${WEEK_DAYS[day]}</span>
+                </div>
+            `).join("")}
+        </div>
+    `;
+
+
+    const card = (eyebrow, title, body) => `
+        <div class="panel rp-card">
+            <div class="rp-head">
+                <span class="eyebrow">${eyebrow}</span>
+                <h3>${title}</h3>
+            </div>
+            ${body}
+        </div>
+    `;
+
+    container.innerHTML = `
+        ${printTitle}
+        ${kpis}
+        <div class="rp-grid2">
+            ${card("HORAS RESERVADAS", "Salas mais usadas", bars)}
+            ${card("QUANDO AS SALAS MAIS SÃO USADAS", "Horários de pico", heatmap + `<p class="rp-note">${peakText}</p>`)}
+        </div>
+        <div class="rp-grid2">
+            ${card("PESSOAS", "Quem mais reserva", rank)}
+            ${card("DISTRIBUIÇÃO", "Reservas por dia da semana", columns)}
+        </div>
+    `;
+
+}
+
+
+/* =========================================================
    CONFIRMAÇÃO
 ========================================================= */
 
@@ -3145,6 +4182,7 @@ document.addEventListener("keydown", event => {
         event.key.toLowerCase() === "n" &&
         !isTyping() &&
         !$("#reservationModal").classList.contains("active") &&
+        !$("#detailsModal").classList.contains("active") &&
         !$("#confirmModal").classList.contains("active")
     ) {
 
