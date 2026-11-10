@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrar</title>
+<link rel="stylesheet" href="login.css">
+</head>
+<body>
+<main class="card">
+  <h1 id="titulo">Entrar</h1>
+  <p class="sub" id="subtitulo">Use seu e-mail e senha para acessar.</p>
+
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" id="aba-login" aria-selected="true">Entrar</button>
+    <button type="button" role="tab" id="aba-cadastro" aria-selected="false">Criar conta</button>
+  </div>
+
+  <form id="form" novalidate>
+    <div id="campo-nome" class="hidden">
+      <label for="nome">Nome</label>
+      <input id="nome" type="text" autocomplete="name">
+    </div>
+
+    <label for="email">E-mail</label>
+    <input id="email" type="email" autocomplete="email" required>
+
+    <label for="senha">Senha</label>
+    <input id="senha" type="password" autocomplete="current-password" required>
+
+    <div id="campo-confirma" class="hidden">
+      <label for="confirma">Confirmar senha</label>
+      <input id="confirma" type="password" autocomplete="new-password">
+    </div>
+
+    <button class="submit" type="submit" id="botao">Entrar</button>
+    <p class="msg" id="msg" role="alert"></p>
+  </form>
+</main>
+
+<script>
+  // ====== CONFIGURE AQUI ======
+  // Nome do arquivo da sua página já pronta (na mesma pasta deste arquivo).
+  const PAGINA_DESTINO = "index.html";
+  // ============================
+
+  const CHAVE_USUARIOS = "usuarios";
+  const CHAVE_SESSAO = "usuarioLogado";
+
+  const $ = (id) => document.getElementById(id);
+  let modo = "login"; // "login" ou "cadastro"
+
+  // Se já estiver logado, vai direto para a página.
+  if (localStorage.getItem(CHAVE_SESSAO)) {
+    window.location.href = PAGINA_DESTINO;
+  }
+
+  function lerUsuarios() {
+    try { return JSON.parse(localStorage.getItem(CHAVE_USUARIOS)) || []; }
+    catch { return []; }
+  }
+
+  async function hashSenha(senha) {
+    // Em localhost/https usa SHA-256. Em outros contextos, o navegador pode não ter crypto.subtle.
+    if (window.crypto && crypto.subtle) {
+      const bytes = new TextEncoder().encode(senha);
+      const hash = await crypto.subtle.digest("SHA-256", bytes);
+      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    return senha;
+  }
+
+  function mostrar(texto, tipo) {
+    const el = $("msg");
+    el.textContent = texto;
+    el.className = "msg " + (tipo || "");
+  }
+
+  function trocarModo(novo) {
+    modo = novo;
+    const cadastro = modo === "cadastro";
+    $("aba-login").setAttribute("aria-selected", String(!cadastro));
+    $("aba-cadastro").setAttribute("aria-selected", String(cadastro));
+    $("campo-nome").classList.toggle("hidden", !cadastro);
+    $("campo-confirma").classList.toggle("hidden", !cadastro);
+    $("titulo").textContent = cadastro ? "Criar conta" : "Entrar";
+    $("subtitulo").textContent = cadastro
+      ? "Preencha os dados para se cadastrar."
+      : "Use seu e-mail e senha para acessar.";
+    $("botao").textContent = cadastro ? "Criar conta" : "Entrar";
+    $("senha").autocomplete = cadastro ? "new-password" : "current-password";
+    mostrar("");
+  }
+
+  $("aba-login").addEventListener("click", () => trocarModo("login"));
+  $("aba-cadastro").addEventListener("click", () => trocarModo("cadastro"));
+
+  $("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = $("email").value.trim().toLowerCase();
+    const senha = $("senha").value;
+    const usuarios = lerUsuarios();
+
+    if (!email || !senha) return mostrar("Preencha e-mail e senha.", "error");
+
+    if (modo === "cadastro") {
+      const nome = $("nome").value.trim();
+      if (!nome) return mostrar("Informe seu nome.", "error");
+      if (senha.length < 6) return mostrar("A senha precisa ter pelo menos 6 caracteres.", "error");
+      if (senha !== $("confirma").value) return mostrar("As senhas não são iguais.", "error");
+      if (usuarios.some(u => u.email === email)) return mostrar("Este e-mail já está cadastrado. Use a aba Entrar.", "error");
+
+      usuarios.push({ nome, email, senha: await hashSenha(senha), criadoEm: new Date().toISOString() });
+      localStorage.setItem(CHAVE_USUARIOS, JSON.stringify(usuarios));
+      mostrar("Conta criada! Agora entre com seus dados.", "ok");
+      $("form").reset();
+      trocarModo("login");
+      mostrar("Conta criada! Agora entre com seus dados.", "ok");
+      return;
+    }
+
+    const usuario = usuarios.find(u => u.email === email);
+    if (!usuario || usuario.senha !== await hashSenha(senha)) {
+      return mostrar("E-mail ou senha incorretos.", "error");
+    }
+
+    localStorage.setItem(CHAVE_SESSAO, JSON.stringify({ nome: usuario.nome, email: usuario.email }));
+    window.location.href = PAGINA_DESTINO;
+  });
+</script>
+</body>
+</html>
