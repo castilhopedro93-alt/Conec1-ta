@@ -36,10 +36,23 @@
         rel="stylesheet"
         href="style.css"
     >
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="bdsupa.js"></script>
+<script src="sincronizar.js"></script>
+
+
 <script>
     const sessao = localStorage.getItem("usuarioLogado");
     if (!sessao) window.location.href = "login.html";
     const usuario = sessao ? JSON.parse(sessao) : null;
+
+    // Confirma no Supabase que a sessão é real
+    db.auth.getSession().then(({ data }) => {
+        if (!data.session) {
+            localStorage.removeItem("usuarioLogado");
+            window.location.href = "login.html";
+        }
+    });
 </script>
 </head>
 

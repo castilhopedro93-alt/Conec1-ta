@@ -123,13 +123,7 @@ migrateOldStorage();
 
 let rooms = loadRooms();
 
-let reservations =
-    (
-        JSON.parse(
-            localStorage.getItem(STORAGE_KEYS.reservations)
-        ) || []
-    ).map(normalizeReservation);
-
+let reservations = [];
 
 let selectedAgendaDate = new Date();
 
@@ -254,7 +248,9 @@ const $$ = selector => document.querySelectorAll(selector);
 document.addEventListener("DOMContentLoaded", initialize);
 
 
-function initialize() {
+async function initialize() {
+
+    await loadFromDatabase();
 
     applyIcons();
     populateRoomSelects();
@@ -265,7 +261,6 @@ function initialize() {
     setupFilters();
     setupAgendaControls();
     setupTheme();
-    setupExport();
     setupRoomForm();
     setupResourcePickers();
     setupSearch();
@@ -1183,22 +1178,12 @@ function setMinimumDate() {
 ========================================================= */
 
 function saveReservations() {
-
-    localStorage.setItem(
-        STORAGE_KEYS.reservations,
-        JSON.stringify(reservations)
-    );
-
+    pushReservations();
 }
 
 
 function saveRooms() {
-
-    localStorage.setItem(
-        STORAGE_KEYS.rooms,
-        JSON.stringify(rooms)
-    );
-
+    pushRooms();
 }
 
 
@@ -1478,10 +1463,11 @@ function renderRecentReservations() {
 
 function renderRooms() {
 
+
     const container = $("#roomsGrid");
+    if (!container) return;   // ← linha nova
 
     const today = getTodayString();
-
 
     container.innerHTML = rooms.map(room => {
 
@@ -2205,12 +2191,6 @@ async function deleteReservation(id) {
 /* =========================================================
    EXPORTAÇÃO CSV
 ========================================================= */
-
-function setupExport() {
-
-    $("#exportButton").addEventListener("click", exportCSV);
-
-}
 
 
 function exportCSV() {
@@ -3143,21 +3123,16 @@ let historyLimit = HISTORY_PAGE;
 
 function loadHistory() {
 
-    try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEYS.history));
-        if (Array.isArray(saved)) return saved;
-    } catch (error) {
-        // dados corrompidos: começa do zero
-    }
-
-    return null;
+    return historyList;
 
 }
 
 
 function saveHistory(list) {
 
-    localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(list));
+    historyList = list;
+
+    pushHistory();
 
 }
 
@@ -4203,7 +4178,15 @@ function isTyping() {
     );
 
 }
-function sair() {
+async function sair() {
+  // limpa o que é local primeiro, para o logout nunca ficar preso
   localStorage.removeItem("usuarioLogado");
+
+  try {
+    await db.auth.signOut();
+  } catch (erro) {
+    console.error("Erro ao sair:", erro);
+  }
+
   window.location.href = "login.html";
 }
