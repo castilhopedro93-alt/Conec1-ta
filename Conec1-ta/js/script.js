@@ -12,7 +12,7 @@ const DEFAULT_ROOMS = [
 
     {
         id: "sala-01",
-        resources: ["projetor", "ar", "quadro"],
+        resources: ["projetor", "quadro"],
         name: "Sala 01",
         number: 1,
         capacity: 20,
@@ -32,7 +32,7 @@ const DEFAULT_ROOMS = [
 
     {
         id: "sala-03",
-        resources: ["projetor", "ar", "som", "acessivel"],
+        resources: ["projetor", "som", "acessivel"],
         name: "Sala 03",
         number: 3,
         capacity: 30,
@@ -42,7 +42,7 @@ const DEFAULT_ROOMS = [
 
     {
         id: "sala-04",
-        resources: ["ar"],
+        resources: [],
         name: "Sala 04",
         number: 4,
         capacity: 10,
@@ -52,7 +52,7 @@ const DEFAULT_ROOMS = [
 
     {
         id: "sala-05",
-        resources: ["computadores", "projetor", "ar"],
+        resources: ["computadores", "projetor"],
         name: "Sala 05",
         number: 5,
         capacity: 20,
@@ -98,7 +98,6 @@ const HOUR_HEIGHT = 65;     // altura de 1 hora na agenda (px)
 // Recursos que uma sala pode ter
 const RESOURCES = [
     { id: "projetor", label: "Projetor" },
-    { id: "ar", label: "Ar-condicionado" },
     { id: "computadores", label: "Computadores" },
     { id: "acessivel", label: "Acessível" },
     { id: "quadro", label: "Quadro branco" },
@@ -251,6 +250,7 @@ document.addEventListener("DOMContentLoaded", initialize);
 async function initialize() {
 
     await loadFromDatabase();
+    applyAdminMode()
 
     applyIcons();
     populateRoomSelects();
@@ -285,6 +285,17 @@ async function initialize() {
 /* =========================================================
    NAVEGAÇÃO
 ========================================================= */
+function applyAdminMode() {
+
+    document
+        .querySelectorAll('[data-section="criar-sala"]')
+        .forEach(element => {
+            element.style.display = isAdmin ? "" : "none";
+        });
+
+    document.body.classList.toggle("is-admin", isAdmin);
+
+}
 
 function setupNavigation() {
 
@@ -324,6 +335,7 @@ function setupNavigation() {
 
 
 function navigateTo(section) {
+    if (section === "criar-sala" && !isAdmin) return;
 
     $$(".page-section").forEach(page => {
 

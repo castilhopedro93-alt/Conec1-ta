@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E-mail confirmado • Conec-ta</title>
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: #f2eefc;
+    background:
+      radial-gradient(900px 500px at 15% 0%, rgba(124, 77, 255, 0.28), transparent 60%),
+      radial-gradient(700px 500px at 100% 100%, rgba(236, 72, 153, 0.18), transparent 60%),
+      #0d0b1a;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 440px;
+    padding: 40px 32px;
+    text-align: center;
+    background: rgba(26, 22, 48, 0.85);
+    border: 1px solid rgba(160, 130, 255, 0.3);
+    border-radius: 18px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .marca {
+    margin: 0 0 28px;
+    font-size: 0.8rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #a78bfa;
+  }
+
+  .icone {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 20px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(74, 222, 128, 0.14);
+    border: 1px solid rgba(74, 222, 128, 0.5);
+    color: #4ade80;
+  }
+
+  .icone.erro {
+    background: rgba(248, 113, 113, 0.14);
+    border-color: rgba(248, 113, 113, 0.5);
+    color: #f87171;
+  }
+
+  .icone svg { width: 34px; height: 34px; }
+  .icone .x { display: none; }
+  .icone.erro .check { display: none; }
+  .icone.erro .x { display: block; }
+
+  h1 {
+    margin: 0 0 10px;
+    font-size: 1.7rem;
+  }
+
+  p.texto {
+    margin: 0 0 28px;
+    line-height: 1.6;
+    color: #cfc9ee;
+  }
+
+  .botao {
+    display: inline-block;
+    padding: 12px 28px;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #7c4dff, #a855f7);
+    color: #ffffff;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .botao:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 3px;
+  }
+</style>
+</head>
+<body>
+
+<main class="card">
+
+  <p class="marca">Conec-ta · Gestão de salas</p>
+
+  <div class="icone" id="icone" aria-hidden="true">
+    <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12.5l4.5 4.5L19 7.5"/>
+    </svg>
+    <svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 6l12 12M18 6L6 18"/>
+    </svg>
+  </div>
+
+  <h1 id="titulo">E-mail confirmado!</h1>
+
+  <p class="texto" id="texto">
+    Sua conta está ativa. Você já pode fechar esta aba e voltar ao site para entrar.
+  </p>
+
+  <a class="botao" href="login.html">Ir para o login</a>
+
+</main>
+
+<script>
+  // O Supabase manda os dados do link depois do "#" (ou "?") do endereço.
+  // Se houver erro (link vencido ou já usado), mostra o aviso certo.
+  const dadosDoLink = new URLSearchParams(
+    window.location.hash.replace(/^#/, "") + "&" + window.location.search.replace(/^\?/, "")
+  );
+
+  if (dadosDoLink.get("error") || dadosDoLink.get("error_code")) {
+    document.getElementById("icone").classList.add("erro");
+    document.getElementById("titulo").textContent = "Link inválido ou expirado";
+    document.getElementById("texto").textContent =
+      "Este link de confirmação já foi usado ou venceu. Volte ao login e tente criar a conta de novo para receber outro e-mail.";
+    document.title = "Link inválido • Conec-ta";
+  }
+
+  // Tira os códigos do link da barra de endereço
+  window.history.replaceState(null, "", window.location.pathname);
+</script>
+
+</body>
+</html>

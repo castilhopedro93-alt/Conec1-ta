@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrar • Conec-ta</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../css/login.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/bdsupa.js"></script>
+</head>
+<body>
+
+<div class="pagina">
+
+  <main class="lado-form">
+    <div class="caixa">
+
+      <h1 id="titulo">Faça seu login<span class="ponto"></span></h1>
+
+      <form id="form" novalidate>
+
+        <div id="campo-nome" class="hidden">
+          <label for="nome">Nome</label>
+          <input id="nome" type="text" autocomplete="name">
+        </div>
+
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" required>
+
+        <div id="campo-senha">
+          <label for="senha">Senha</label>
+          <input id="senha" type="password" autocomplete="current-password" required>
+        </div>
+
+        <div id="campo-confirma" class="hidden">
+          <label for="confirma">Confirmar senha</label>
+          <input id="confirma" type="password" autocomplete="new-password">
+        </div>
+
+        <div class="linha-link" id="linha-esqueci">
+          <button type="button" class="link" id="link-esqueci">Esqueci minha senha</button>
+        </div>
+
+        <button class="botao" type="submit" id="botao">Entrar</button>
+
+        <p class="msg" id="msg" role="alert"></p>
+
+        <div class="rodape">
+          <button type="button" class="link" id="link-alternar">Ainda não tenho uma conta</button>
+        </div>
+
+      </form>
+
+    </div>
+  </main>
+
+  <div class="foto" aria-hidden="true"></div>
+
+</div>
+
+<script>
+  const PAGINA_DESTINO = "index.html";
+
+  const $ = (id) => document.getElementById(id);
+  let modo = "login"; // "login", "cadastro" ou "recuperar"
+
+  // Se já existe sessão no Supabase, vai direto para o sistema
+  db.auth.getSession().then(({ data }) => {
+    if (data.session) {
+      salvarUsuarioLocal(data.session.user);
+      window.location.href = PAGINA_DESTINO;
+    }
+  });
+
+  // O resto do sistema lê o usuário logado daqui
+  function salvarUsuarioLocal(user) {
+    const nome = (user.user_metadata && user.user_metadata.nome) || user.email.split("@")[0];
+    localStorage.setItem("usuarioLogado", JSON.stringify({ nome, email: user.email }));
+  }
+
+  function mostrar(texto, tipo) {
+    const el = $("msg");
+    el.textContent = texto;
+    el.className = "msg " + (tipo || "");
+  }
+
+  /* ---------- Os três modos da tela ---------- */
+
+  const MODOS = {
+    login: {
+      titulo: "Faça seu login",
+      botao: "Entrar",
+      alternar: "Ainda não tenho uma conta",
+      nome: false, senha: true, confirma: false, esqueci: true
+    },
+    cadastro: {
+      titulo: "Crie sua conta",
+      botao: "Criar conta",
+      alternar: "Já tenho uma conta",
+      nome: true, senha: true, confirma: true, esqueci: false
+    },
+    recuperar: {
+      titulo: "Recuperar senha",
+      botao: "Enviar link de recuperação",
+      alternar: "Voltar para o login",
+      nome: false, senha: false, confirma: false, esqueci: false
+    }
+  };
+
+  function trocarModo(novo) {
+    modo = novo;
+    const m = MODOS[modo];
+
+    $("titulo").innerHTML = m.titulo + '<span class="ponto"></span>';
+    $("botao").textContent = m.botao;
+    $("link-alternar").textContent = m.alternar;
+
+    $("campo-nome").classList.toggle("hidden", !m.nome);
+    $("campo-senha").classList.toggle("hidden", !m.senha);
+    $("campo-confirma").classList.toggle("hidden", !m.confirma);
+    $("linha-esqueci").classList.toggle("hidden", !m.esqueci);
+
+    $("senha").autocomplete = modo === "cadastro" ? "new-password" : "current-password";
+    mostrar("");
+  }
+
+  $("link-alternar").addEventListener("click", () => {
+    trocarModo(modo === "login" ? "cadastro" : "login");
+  });
+
+  $("link-esqueci").addEventListener("click", () => trocarModo("recuperar"));
+
+  /* ---------- Envio do formulário ---------- */
+
+  $("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const email = $("email").value.trim().toLowerCase();
+    const senha = $("senha").value;
+    const botao = $("botao");
+
+    if (!email) return mostrar("Digite seu e-mail.", "error");
+
+    const formatoValido = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+    if (!formatoValido) return mostrar("Digite um e-mail válido, como nome@exemplo.com.", "error");
+
+    botao.disabled = true;
+
+    try {
+
+      // ----- Recuperar senha -----
+      if (modo === "recuperar") {
+        const { error } = await db.auth.resetPasswordForEmail(email, {
+          redirectTo: new URL("redefinir.html", window.location.href).href
+        });
+
+        if (error) return mostrar(traduzirErro(error), "error");
+
+        return mostrar("Se esse e-mail tiver uma conta, enviamos um link para criar uma nova senha. Veja também o spam.", "ok");
+      }
+
+      if (!senha) return mostrar("Digite sua senha.", "error");
+
+      // ----- Cadastro -----
+      if (modo === "cadastro") {
+        const nome = $("nome").value.trim();
+        if (!nome) return mostrar("Informe seu nome.", "error");
+        if (senha.length < 6) return mostrar("A senha precisa ter pelo menos 6 caracteres.", "error");
+        if (senha !== $("confirma").value) return mostrar("As senhas não são iguais.", "error");
+
+        const { data, error } = await db.auth.signUp({
+          email,
+          password: senha,
+          options: {
+            data: { nome },
+            emailRedirectTo: new URL("confirmado.html", window.location.href).href
+          }
+        });
+
+        if (error) return mostrar(traduzirErro(error), "error");
+
+        // E-mail já cadastrado: o Supabase devolve um usuário sem identidades
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+          return mostrar("Este e-mail já está cadastrado. Use a opção Entrar.", "error");
+        }
+
+        // Se a confirmação por e-mail está ligada, não vem sessão
+        if (!data.session) {
+          $("form").reset();
+          trocarModo("login");
+          return mostrar("Conta criada! Enviamos um e-mail de confirmação. Clique no link e depois entre.", "ok");
+        }
+
+        salvarUsuarioLocal(data.user);
+        window.location.href = PAGINA_DESTINO;
+        return;
+      }
+
+      // ----- Login -----
+      const { data, error } = await db.auth.signInWithPassword({ email, password: senha });
+
+      if (error) {
+
+        // Credenciais inválidas: descobre se o e-mail existe ou não
+        if ((error.message || "").toLowerCase().includes("invalid login")) {
+
+          const { data: existe, error: erroConsulta } =
+            await db.rpc("email_cadastrado", { p_email: email });
+
+          if (!erroConsulta && existe === false) {
+            return mostrarSugestaoCadastro();
+          }
+
+          if (!erroConsulta && existe === true) {
+            return mostrar("Senha incorreta. Tente de novo.", "error");
+          }
+
+        }
+
+        return mostrar(traduzirErro(error), "error");
+
+      }
+
+      salvarUsuarioLocal(data.user);
+      window.location.href = PAGINA_DESTINO;
+
+    } catch (erro) {
+      mostrar("Não foi possível conectar. Verifique sua internet e tente de novo.", "error");
+    } finally {
+      botao.disabled = false;
+    }
+  });
+
+  function mostrarSugestaoCadastro() {
+
+    const el = $("msg");
+    el.className = "msg error";
+    el.textContent = "Não há nenhum e-mail registrado com essa conta. ";
+
+    const link = document.createElement("a");
+    link.href = "#";
+    link.textContent = "Criar uma conta";
+
+    link.addEventListener("click", (evento) => {
+      evento.preventDefault();
+      const emailDigitado = $("email").value;
+      trocarModo("cadastro");
+      $("email").value = emailDigitado;
+    });
+
+    el.appendChild(link);
+
+  }
+
+  function traduzirErro(error) {
+    const msg = (error.message || "").toLowerCase();
+    if (msg.includes("invalid login")) return "E-mail ou senha incorretos.";
+    if (msg.includes("not confirmed")) return "Confirme seu e-mail antes de entrar (veja a caixa de entrada e o spam).";
+    if (msg.includes("already registered")) return "Este e-mail já está cadastrado. Use a opção Entrar.";
+    if (msg.includes("rate limit")) return "Muitas tentativas. Aguarde um pouco e tente de novo.";
+    if (msg.includes("password")) return "Senha inválida. Use pelo menos 6 caracteres.";
+    return "Erro: " + error.message;
+  }
+</script>
+
+</body>
+</html>

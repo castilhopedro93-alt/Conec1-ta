@@ -1,0 +1,188 @@
+:root {
+  --bg: #09090d;
+  --campo: #1b1b22;
+  --texto: #f3f1fa;
+  --suave: #9d9aae;
+  --linha: #2b2b35;
+  --roxo: #a855f7;
+  --erro: #ff8f8f;
+  --ok: #6fe3a0;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--texto);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* ---------- Layout em duas colunas ---------- */
+
+.pagina {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+}
+
+.lado-form {
+  display: grid;
+  place-items: center;
+  padding: 32px 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.caixa {
+  width: 100%;
+  max-width: 330px;
+}
+
+/* ---------- Foto à direita, com degradê para o fundo escuro ---------- */
+
+.foto {
+  position: relative;
+  background:
+    url("../fundologin.png") center / cover no-repeat,
+    linear-gradient(160deg, #14102b 0%, #2a1a5e 55%, #6b3f8c 100%);
+}
+
+.foto::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--bg) 0%, rgba(9, 9, 13, 0.55) 30%, rgba(9, 9, 13, 0) 65%);
+}
+
+/* ---------- Título ---------- */
+
+h1 {
+  margin: 0 0 32px;
+  font-size: 2.4rem;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.ponto {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--roxo);
+}
+
+/* ---------- Campos ---------- */
+
+label {
+  display: block;
+  margin: 18px 0 8px;
+  font-size: 0.88rem;
+  color: var(--suave);
+}
+
+input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--campo);
+  color: var(--texto);
+  font: inherit;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--roxo);
+}
+
+.hidden { display: none; }
+
+/* ---------- Botões e links ---------- */
+
+.linha-link {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.link {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--suave);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.link:hover { color: var(--texto); }
+
+.link:focus-visible,
+.botao:focus-visible {
+  outline: 2px solid var(--roxo);
+  outline-offset: 3px;
+}
+
+.botao {
+  width: 100%;
+  margin-top: 22px;
+  padding: 13px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #7c4dff 0%, #c04fe8 55%, #ec4899 100%);
+  color: #ffffff;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botao:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.rodape {
+  margin-top: 22px;
+  text-align: center;
+}
+
+/* ---------- Mensagens ---------- */
+
+.msg {
+  min-height: 1.4em;
+  margin: 16px 0 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.msg.error { color: var(--erro); }
+.msg.ok { color: var(--ok); }
+
+.msg a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* ---------- Celular: a foto vira um fundo suave ---------- */
+
+@media (max-width: 800px) {
+  .pagina {
+    grid-template-columns: 1fr;
+  }
+
+  .foto {
+    position: fixed;
+    inset: 0;
+    opacity: 0.35;
+  }
+
+  .foto::before {
+    background: rgba(9, 9, 13, 0.55);
+  }
+
+  h1 { font-size: 2rem; }
+}

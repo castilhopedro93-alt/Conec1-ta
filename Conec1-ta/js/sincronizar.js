@@ -18,6 +18,8 @@ let historyList = [];
 // Só envia ao banco depois de carregar com sucesso
 let dataReady = false;
 
+// Vira true se o usuário logado está na tabela admins
+let isAdmin = false;
 
 /* ---------- Conversão entre o sistema e as tabelas ---------- */
 
@@ -218,20 +220,21 @@ function pushHistory() {
 async function loadFromDatabase() {
 
     try {
+const [roomsResult, reservationsResult, historyResult, adminResult] = await Promise.all([
+    db.from("rooms").select("*"),
+    db.from("reservations").select("*"),
+    db.from("history").select("*").order("at", { ascending: true }),
+    db.from("admins").select("email")
+]);
 
-        const [roomsResult, reservationsResult, historyResult] = await Promise.all([
-            db.from("rooms").select("*"),
-            db.from("reservations").select("*"),
-            db.from("history").select("*").order("at", { ascending: true })
-        ]);
+[roomsResult, reservationsResult, historyResult, adminResult].forEach(result => {
+    if (result.error) throw result.error;
+});
 
-        [roomsResult, reservationsResult, historyResult].forEach(result => {
-            if (result.error) throw result.error;
-        });
-
+isAdmin = adminResult.data.length > 0;
 
         // Salas
-        if (roomsResult.data.length === 0) {
+        if (roomsResult.data.length === 0 && isAdmin) {
 
             // Primeira vez: envia as salas que o sistema já tem
             // (as salvas neste navegador ou as padrão)

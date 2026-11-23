@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nova senha • Conec-ta</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../css/login.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/bdsupa.js"></script>
+</head>
+<body>
+
+<div class="pagina">
+
+  <main class="lado-form">
+    <div class="caixa">
+
+      <h1 id="titulo">Nova senha<span class="ponto"></span></h1>
+
+      <form id="form" novalidate class="hidden">
+
+        <label for="senha">Nova senha</label>
+        <input id="senha" type="password" autocomplete="new-password" required>
+
+        <label for="confirma">Confirmar nova senha</label>
+        <input id="confirma" type="password" autocomplete="new-password" required>
+
+        <button class="botao" type="submit" id="botao">Salvar nova senha</button>
+
+      </form>
+
+      <p class="msg" id="msg" role="alert">Verificando o link...</p>
+
+      <div class="rodape">
+        <a class="link" href="login.html">Voltar para o login</a>
+      </div>
+
+    </div>
+  </main>
+
+  <div class="foto" aria-hidden="true"></div>
+
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  function mostrar(texto, tipo) {
+    const el = $("msg");
+    el.textContent = texto;
+    el.className = "msg " + (tipo || "");
+  }
+
+  let linkValido = false;
+
+  function liberarFormulario() {
+    linkValido = true;
+    $("form").classList.remove("hidden");
+    mostrar("");
+  }
+
+  // O Supabase lê o link do e-mail e avisa por aqui que é uma recuperação de senha
+  db.auth.onAuthStateChange((evento) => {
+    if (evento === "PASSWORD_RECOVERY") liberarFormulario();
+  });
+
+  // Se nada acontecer em alguns segundos, o link é inválido ou venceu
+  setTimeout(() => {
+    if (!linkValido) {
+      mostrar("Este link é inválido ou já venceu. Volte ao login e peça um novo em \"Esqueci minha senha\".", "error");
+    }
+  }, 3000);
+
+  $("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const senha = $("senha").value;
+
+    if (senha.length < 6) return mostrar("A senha precisa ter pelo menos 6 caracteres.", "error");
+    if (senha !== $("confirma").value) return mostrar("As senhas não são iguais.", "error");
+
+    $("botao").disabled = true;
+
+    try {
+      const { error } = await db.auth.updateUser({ password: senha });
+
+      if (error) {
+        const msg = (error.message || "").toLowerCase();
+        if (msg.includes("different")) return mostrar("A nova senha precisa ser diferente da anterior.", "error");
+        return mostrar("Não foi possível salvar: " + error.message, "error");
+      }
+
+      // Encerra a sessão de recuperação: a pessoa entra de novo com a senha nova
+      await db.auth.signOut();
+      localStorage.removeItem("usuarioLogado");
+
+      $("form").classList.add("hidden");
+      $("titulo").innerHTML = "Senha alterada<span class=\"ponto\"></span>";
+      mostrar("Pronto! Sua senha foi atualizada. Volte ao login e entre com a nova senha.", "ok");
+
+    } catch (erro) {
+      mostrar("Não foi possível conectar. Tente de novo.", "error");
+    } finally {
+      $("botao").disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
