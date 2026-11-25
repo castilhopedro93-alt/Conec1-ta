@@ -223,7 +223,9 @@ async function loadFromDatabase() {
 const [roomsResult, reservationsResult, historyResult, adminResult] = await Promise.all([
     db.from("rooms").select("*"),
     db.from("reservations").select("*"),
-    db.from("history").select("*").order("at", { ascending: true }),
+    // Mais novos primeiro: o banco entrega no máximo 1000 linhas por consulta,
+    // assim o limite nunca esconde o que acabou de acontecer
+    db.from("history").select("*").order("at", { ascending: false }).limit(1000),
     db.from("admins").select("email")
 ]);
 
@@ -276,7 +278,7 @@ isAdmin = adminResult.data.length > 0;
 
 
         // Histórico
-        historyList = historyResult.data.map(rowToHistory);
+        historyList = historyResult.data.map(rowToHistory).reverse();
 
         SYNC.history.clear();
         historyList.forEach(entry => SYNC.history.add(entry.id));
