@@ -150,6 +150,7 @@ const ICON_PATHS = {
     livro: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5"/><path d="M9 7.5h7"/>',
     conversa: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-5 4.5V16h-.5"/><path d="M8.5 8.5h7M8.5 11.5h4.5"/>',
     sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
+    configuracoes: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
     relatorios: '<path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M21 20H3"/>',
     download: '<path d="M12 4v11"/><path d="m8 11 4 4 4-4"/><path d="M5 20h14"/>',
     historico: '<path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3 4v4.5h4.5"/><path d="M12 7.5V12l3 2"/>',
@@ -195,7 +196,8 @@ function applyIcons() {
         "criar-sala": "criar",
         "minhas-reservas": "usuario",
         historico: "historico",
-        relatorios: "relatorios"
+        relatorios: "relatorios",
+        configuracoes: "configuracoes"
     };
 
     $$(".nav-item").forEach(item => {
@@ -266,6 +268,7 @@ async function initialize() {
     setupSearch();
     setupHistory();
     setupReport();
+    setupSettings();
     renderAll();
 
 
@@ -370,6 +373,7 @@ function navigateTo(section) {
         "minhas-reservas": "Minhas reservas",
         historico: "Histórico",
         relatorios: "Relatórios",
+        configuracoes: "Configurações",
         "buscar-sala": "Buscar sala"
     };
 
@@ -396,11 +400,17 @@ function navigateTo(section) {
 
     if (section === "historico") {
         historyLimit = HISTORY_PAGE;
+        // Sempre abre mostrando a última semana
+        if ($("#historyPeriod")) $("#historyPeriod").value = "7";
         renderHistory();
     }
 
     if (section === "relatorios") {
         renderReport();
+    }
+
+    if (section === "configuracoes") {
+        renderSettings();
     }
 
 }
@@ -488,6 +498,20 @@ function setupModal() {
 
     $("#repeatUntil").addEventListener("change", checkConflict);
 
+    // Dias da semana da repetição (sábado e domingo ficam bloqueados)
+    $$("#repeatDays input").forEach(input => {
+        input.addEventListener("change", () => {
+            repeatDaysTouched = true;
+            checkConflict();
+        });
+    });
+
+    $("#repeatWholeWeek").addEventListener("click", () => {
+        setRepeatDays([1, 2, 3, 4, 5]);
+        repeatDaysTouched = true;
+        checkConflict();
+    });
+
     $("#confirmAlt").addEventListener("click", () => closeConfirm("alt"));
 
 }
@@ -514,6 +538,8 @@ function openReservationModal(options = {}) {
     // Repetição: só ao criar (ao editar, muda apenas aquela reserva)
     $("#repeat").value = "none";
     $("#repeatUntil").value = "";
+    repeatDaysTouched = false;
+    setRepeatDays([]);
     $$(".repeat-field").forEach(field => {
         field.hidden = Boolean(options.id);
     });
@@ -743,7 +769,7 @@ function handleReservationSubmit(event) {
 
     showToast(
         dates.length > 1
-            ? `${dates.length} reservas criadas, toda semana até ${formatDate(dates[dates.length - 1])}.`
+            ? `${dates.length} reservas criadas (${describeRepeatDays()}) até ${formatDate(dates[dates.length - 1])}.`
             : "Reserva criada com sucesso."
     );
 
@@ -766,6 +792,40 @@ function createId() {
 const MAX_WEEKS = 26;
 
 
+let repeatDaysTouched = false;
+
+const WEEKDAY_SHORT = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+
+
+function getRepeatDays() {
+
+    return [...$$("#repeatDays input:checked")]
+        .map(input => Number(input.value))
+        .filter(day => day >= 1 && day <= 5);
+
+}
+
+
+function setRepeatDays(days) {
+
+    $$("#repeatDays input").forEach(input => {
+        input.checked = !input.disabled && days.includes(Number(input.value));
+    });
+
+}
+
+
+function describeRepeatDays() {
+
+    const days = getRepeatDays().sort();
+
+    if (days.length === 5) return "seg a sex";
+
+    return days.map(day => WEEKDAY_SHORT[day]).join(", ");
+
+}
+
+
 function updateRepeatFields() {
 
     const weekly = $("#repeat").value === "weekly";
@@ -776,6 +836,19 @@ function updateRepeatFields() {
 
 
     untilField.hidden = !weekly || Boolean(editingReservationId);
+
+    $("#repeatDaysField").hidden = !weekly || Boolean(editingReservationId);
+
+
+    // Enquanto a pessoa não mexe nos dias, marca o dia da semana da data escolhida
+    if (weekly && !repeatDaysTouched && $("#date").value) {
+
+        const [y, m, d] = $("#date").value.split("-").map(Number);
+        const weekDay = new Date(y, m - 1, d).getDay();
+
+        setRepeatDays(weekDay >= 1 && weekDay <= 5 ? [weekDay] : []);
+
+    }
 
     untilInput.required = weekly && !editingReservationId;
 
@@ -790,7 +863,7 @@ function updateRepeatFields() {
 }
 
 
-// Lista de datas da reserva: só a escolhida ou uma por semana
+// Lista de datas da reserva: só a escolhida ou todos os dias marcados até a data final
 function getOccurrenceDates() {
 
     const date = $("#date").value;
@@ -808,14 +881,22 @@ function getOccurrenceDates() {
     if (!until || until < date) return [date];
 
 
+    const days = getRepeatDays();
+
+    const lastDay = addDays(date, 7 * MAX_WEEKS - 1);
+
     const dates = [];
 
     for (
         let current = date;
-        current <= until && dates.length < MAX_WEEKS;
-        current = addDays(current, 7)
+        current <= until && current <= lastDay;
+        current = addDays(current, 1)
     ) {
-        dates.push(current);
+        const [y, m, d] = current.split("-").map(Number);
+
+        if (days.includes(new Date(y, m - 1, d).getDay())) {
+            dates.push(current);
+        }
     }
 
     return dates;
@@ -882,8 +963,16 @@ function getReservationProblem() {
             return "A data final da repetição precisa ser depois da data da reserva.";
         }
 
-        if (addDays(date, 7 * (MAX_WEEKS - 1)) < until) {
+        if (addDays(date, 7 * MAX_WEEKS - 1) < until) {
             return `A repetição pode ter no máximo ${MAX_WEEKS} semanas.`;
+        }
+
+        if (!getRepeatDays().length) {
+            return "Marque pelo menos um dia da semana (segunda a sexta) para repetir.";
+        }
+
+        if (!getOccurrenceDates().length) {
+            return "Nenhum dos dias marcados cai entre a data da reserva e a data final.";
         }
 
     }
@@ -2062,7 +2151,7 @@ function showReservationDetails(id) {
             ${reservation.seriesId ? `
                 <div class="detail-row">
                     <span>Repetição</span>
-                    <strong>Toda semana (${reservations.filter(item => item.seriesId === reservation.seriesId).length} no total)</strong>
+                    <strong>Repetida (${reservations.filter(item => item.seriesId === reservation.seriesId).length} no total)</strong>
                 </div>
             ` : ""}
 
@@ -2157,7 +2246,7 @@ async function deleteReservation(id) {
     const answer = await showConfirm({
         title: "Cancelar reserva?",
         message: isSeries
-            ? `Esta reserva da <strong>${escapeHTML(reservation.roomName)}</strong> se repete toda semana. Cancelar só a de ${formatDate(reservation.date)} ou as <strong>${series.length}</strong> próximas?`
+            ? `Esta reserva da <strong>${escapeHTML(reservation.roomName)}</strong> faz parte de uma repetição. Cancelar só a de ${formatDate(reservation.date)} ou as <strong>${series.length}</strong> próximas?`
             : `A reserva da <strong>${escapeHTML(reservation.roomName)}</strong> em ${formatDate(reservation.date)}, das ${reservation.startTime} às ${reservation.endTime}, será cancelada.`,
         confirmText: isSeries ? "Só esta" : "Sim, cancelar",
         cancelText: "Voltar",
@@ -3080,7 +3169,7 @@ function renderMyReservations() {
 
             <div class="schedule-main">
                 <strong>${escapeHTML(item.roomName)}</strong>
-                <span>${escapeHTML(item.purpose || "Sem finalidade")}${item.seriesId ? " · toda semana" : ""}</span>
+                <span>${escapeHTML(item.purpose || "Sem finalidade")}${item.seriesId ? " · repetida" : ""}</span>
             </div>
 
             <span class="schedule-status ${isPast(item) ? "state-past" : isHappeningNow(item) ? "state-now" : "state-upcoming"}">
@@ -3260,7 +3349,7 @@ function setupHistory() {
     if (!roomFilter) return;
 
 
-    ["#historySearch", "#historyType", "#historyRoom"].forEach(selector => {
+    ["#historySearch", "#historyPeriod", "#historyType", "#historyRoom"].forEach(selector => {
         $(selector).addEventListener("input", () => {
             historyLimit = HISTORY_PAGE;
             renderHistory();
@@ -3313,12 +3402,28 @@ function renderHistory() {
     }
 
 
-    // Números do topo (sempre sobre o histórico inteiro)
-    const total = type => all
+    // Período escolhido: últimos 7 dias, últimos 30 dias ou tudo
+    const period = $("#historyPeriod") ? $("#historyPeriod").value : "all";
+
+    let inPeriod = all;
+
+    if (period !== "all") {
+
+        const since = new Date();
+        since.setHours(0, 0, 0, 0);
+        since.setDate(since.getDate() - (Number(period) - 1));
+
+        inPeriod = all.filter(event => event.at && new Date(event.at) >= since);
+
+    }
+
+
+    // Números do topo (do período escolhido)
+    const total = type => inPeriod
         .filter(event => event.type === type)
         .reduce((sum, event) => sum + (event.count || 1), 0);
 
-    const people = new Set(all.map(event => event.byEmail || event.byName));
+    const people = new Set(inPeriod.map(event => event.byEmail || event.byName));
 
     $("#historyStats").innerHTML = `
         <div class="history-stat"><strong>${total("criada")}</strong><span>${total("criada") === 1 ? "reserva feita" : "reservas feitas"}</span></div>
@@ -3333,7 +3438,7 @@ function renderHistory() {
     const type = $("#historyType").value;
     const room = roomFilter.value;
 
-    const filtered = all.filter(event => {
+    const filtered = inPeriod.filter(event => {
 
         if (type !== "all" && event.type !== type) return false;
 
@@ -3360,7 +3465,13 @@ function renderHistory() {
         container.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">${iconSVG("historico")}</div>
-                <p>${all.length ? "Nada encontrado com esses filtros." : "Nenhum agendamento registrado ainda."}</p>
+                <p>${
+                    !all.length
+                        ? "Nenhum agendamento registrado ainda."
+                        : !inPeriod.length
+                            ? `Nenhuma ação ${period === "7" ? "nos últimos 7 dias" : "nos últimos 30 dias"}. Escolha um período maior.`
+                            : "Nada encontrado com esses filtros."
+                }</p>
             </div>
         `;
 
@@ -3396,7 +3507,7 @@ function renderHistory() {
         const r = event.reservation;
 
         const target = event.count > 1
-            ? `${event.count} reservas semanais, de ${formatDate(r.date).slice(0, 5)} até ${formatDate(event.until).slice(0, 5)}, ${formatRange(r)}`
+            ? `${event.count} reservas repetidas, de ${formatDate(r.date).slice(0, 5)} até ${formatDate(event.until).slice(0, 5)}, ${formatRange(r)}`
             : `${formatDate(r.date)}, ${formatRange(r)}`;
 
         const changes = event.changes && event.changes.length
@@ -4201,4 +4312,408 @@ async function sair() {
   }
 
   window.location.href = "login.html";
+}
+
+
+
+/* =========================================================
+   CONFIGURAÇÕES DA CONTA
+   Editar nome, trocar senha e excluir a conta.
+========================================================= */
+
+function setupSettings() {
+
+    if (!$("#configuracoes")) return;
+
+    $("#profileForm").addEventListener("submit", saveProfile);
+    $("#passwordForm").addEventListener("submit", changePassword);
+    $("#deleteAccountForm").addEventListener("submit", deleteAccount);
+
+    $("#signOutEverywhere").addEventListener("click", signOutEverywhere);
+
+    $$("#fontOptions .font-option").forEach(button => {
+        button.addEventListener("click", () => setFontSize(button.dataset.fonte));
+    });
+
+    // Clicar no "Olá, Nome" do menu abre as configurações
+    const status = $(".system-status");
+    if (status) {
+        status.classList.add("clickable");
+        status.title = "Configurações da conta";
+        status.addEventListener("click", () => {
+            navigateTo("configuracoes");
+            $("#sidebar").classList.remove("open");
+        });
+    }
+
+}
+
+
+function renderSettings() {
+
+    const user = getCurrentUser() || {};
+
+    const name = user.nome || "";
+
+    $("#settingsName").value = name;
+    $("#settingsEmail").textContent = user.email || "—";
+    $("#settingsRole").textContent = isAdmin ? "Administrador" : "Usuário";
+    $("#settingsAvatar").textContent =
+        name.split(/\s+/).filter(Boolean).map(word => word[0]).slice(0, 2).join("").toUpperCase() || "?";
+
+
+    updateFontOptions();
+
+
+    const future = reservations.filter(item => isMine(item) && !isPast(item)).length;
+
+    $("#deleteFutureInfo").textContent = future
+        ? (future === 1 ? "Sua única reserva futura será cancelada." : `Suas ${future} reservas futuras serão canceladas.`)
+        : "Você não tem reservas futuras.";
+
+}
+
+
+function updateSidebarUser(user) {
+
+    $("#loggedUserName").textContent = `Olá, ${user.nome.split(" ")[0]}`;
+    $("#loggedUserEmail").textContent = user.email || "";
+
+}
+
+
+function setBusy(button, busy, text) {
+
+    if (busy) {
+        button.dataset.text = button.textContent;
+        button.textContent = text;
+    } else if (button.dataset.text) {
+        button.textContent = button.dataset.text;
+    }
+
+    button.disabled = busy;
+
+}
+
+
+// Confere a senha atual (entrando de novo com ela)
+async function checkPassword(password) {
+
+    const user = getCurrentUser();
+
+    if (!user || !user.email) return false;
+
+    const { error } = await db.auth.signInWithPassword({
+        email: user.email,
+        password
+    });
+
+    return !error;
+
+}
+
+
+async function saveProfile(event) {
+
+    event.preventDefault();
+
+    const user = getCurrentUser();
+
+    const name = $("#settingsName").value.trim().replace(/\s+/g, " ");
+
+
+    if (name.length < 2) {
+        showToast("Digite um nome com pelo menos 2 letras.", "error");
+        return;
+    }
+
+    if (user && name === user.nome) {
+        showToast("Esse já é o seu nome.", "warning");
+        return;
+    }
+
+
+    const button = $("#profileSave");
+
+    setBusy(button, true, "Salvando...");
+
+    try {
+
+        const { error } = await db.auth.updateUser({ data: { nome: name } });
+
+        if (error) throw error;
+
+
+        const updated = { ...user, nome: name };
+
+        localStorage.setItem("usuarioLogado", JSON.stringify(updated));
+
+        updateSidebarUser(updated);
+
+
+        // As reservas guardam o nome de quem reservou: atualiza as suas
+        reservations.forEach(item => {
+            if (isMine(item)) item.ownerName = name;
+        });
+
+        saveReservations();
+
+        renderAll();
+        renderSettings();
+
+        showToast("Nome atualizado.");
+
+    } catch (error) {
+
+        showToast("Não foi possível salvar o nome. Verifique sua internet e tente de novo.", "error");
+
+    } finally {
+
+        setBusy(button, false);
+
+    }
+
+}
+
+
+async function changePassword(event) {
+
+    event.preventDefault();
+
+    const current = $("#currentPassword").value;
+    const next = $("#newPassword").value;
+    const confirm = $("#confirmPassword").value;
+
+
+    if (!current) {
+        showToast("Digite sua senha atual.", "error");
+        return;
+    }
+
+    if (next.length < 6) {
+        showToast("A nova senha precisa ter pelo menos 6 caracteres.", "error");
+        return;
+    }
+
+    if (next !== confirm) {
+        showToast("A nova senha e a confirmação não são iguais.", "error");
+        return;
+    }
+
+    if (next === current) {
+        showToast("A nova senha precisa ser diferente da atual.", "error");
+        return;
+    }
+
+
+    const button = $("#passwordSave");
+
+    setBusy(button, true, "Trocando...");
+
+    try {
+
+        if (!(await checkPassword(current))) {
+            showToast("A senha atual está incorreta.", "error");
+            return;
+        }
+
+        const { error } = await db.auth.updateUser({ password: next });
+
+        if (error) throw error;
+
+        $("#passwordForm").reset();
+
+        showToast("Senha trocada com sucesso.");
+
+    } catch (error) {
+
+        showToast("Não foi possível trocar a senha. Tente de novo.", "error");
+
+    } finally {
+
+        setBusy(button, false);
+
+    }
+
+}
+
+
+async function deleteAccount(event) {
+
+    event.preventDefault();
+
+    const password = $("#deletePassword").value;
+
+    if (!password) {
+        showToast("Digite sua senha para confirmar.", "error");
+        return;
+    }
+
+
+    const future = reservations.filter(item => isMine(item) && !isPast(item)).length;
+
+    const answer = await showConfirm({
+        title: "Excluir sua conta?",
+        message:
+            "Sua conta será apagada para sempre" +
+            (future === 1 ? " e sua única reserva futura será cancelada" : future ? ` e suas <strong>${future}</strong> reservas futuras serão canceladas` : "") +
+            ". <strong>Não dá para desfazer.</strong>",
+        confirmText: "Sim, excluir",
+        cancelText: "Voltar"
+    });
+
+    if (answer !== true) return;
+
+
+    const button = $("#deleteAccountButton");
+
+    setBusy(button, true, "Excluindo...");
+
+    try {
+
+        if (!(await checkPassword(password))) {
+            showToast("Senha incorreta. A conta não foi excluída.", "error");
+            return;
+        }
+
+
+        // A função no banco apaga as reservas futuras e o usuário
+        const { error } = await db.rpc("excluir_minha_conta");
+
+        if (error) {
+
+            const missing =
+                error.code === "PGRST202" ||
+                /function|could not find/i.test(error.message || "");
+
+            showToast(
+                missing
+                    ? "A exclusão de conta ainda não foi ativada no banco de dados (falta criar a função excluir_minha_conta no Supabase)."
+                    : "Não foi possível excluir a conta. Tente de novo.",
+                "error"
+            );
+
+            return;
+
+        }
+
+
+        localStorage.removeItem("usuarioLogado");
+
+        try {
+            await db.auth.signOut();
+        } catch (error) {
+            // a conta já não existe: só segue para o login
+        }
+
+        window.location.href = "login.html?conta=excluida";
+
+    } catch (error) {
+
+        showToast("Não foi possível excluir a conta. Verifique sua internet e tente de novo.", "error");
+
+    } finally {
+
+        setBusy(button, false);
+
+    }
+
+}
+
+
+
+/* ---------- Tamanho do texto ---------- */
+
+const FONT_SIZES = {
+    normal: "Normal",
+    grande: "Grande",
+    extra: "Extra grande"
+};
+
+
+function getFontSize() {
+
+    const value = document.documentElement.dataset.fonte;
+
+    return FONT_SIZES[value] ? value : "normal";
+
+}
+
+
+function updateFontOptions() {
+
+    const current = getFontSize();
+
+    $$("#fontOptions .font-option").forEach(button => {
+        const active = button.dataset.fonte === current;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-checked", String(active));
+    });
+
+}
+
+
+function setFontSize(size) {
+
+    if (!FONT_SIZES[size]) return;
+
+    if (size === "normal") {
+        delete document.documentElement.dataset.fonte;
+    } else {
+        document.documentElement.dataset.fonte = size;
+    }
+
+    try {
+        if (size === "normal") localStorage.removeItem("conecta_fonte");
+        else localStorage.setItem("conecta_fonte", size);
+    } catch (error) {
+        // sem localStorage: vale só até fechar a página
+    }
+
+    updateFontOptions();
+
+    // A agenda calcula posições em pixels: redesenha com o tamanho novo
+    renderAll();
+
+    showToast(`Tamanho do texto: ${FONT_SIZES[size]}.`);
+
+}
+
+
+/* ---------- Sair de todos os dispositivos ---------- */
+
+async function signOutEverywhere() {
+
+    const answer = await showConfirm({
+        title: "Sair de todos os dispositivos?",
+        message: "Sua conta será desconectada em <strong>todos</strong> os computadores e celulares, inclusive neste. Depois é só entrar de novo.",
+        confirmText: "Sair de todos",
+        cancelText: "Voltar"
+    });
+
+    if (answer !== true) return;
+
+
+    const button = $("#signOutEverywhere");
+
+    setBusy(button, true, "Saindo...");
+
+    try {
+
+        const { error } = await db.auth.signOut({ scope: "global" });
+
+        if (error) throw error;
+
+        localStorage.removeItem("usuarioLogado");
+
+        window.location.href = "login.html?saiu=todos";
+
+    } catch (error) {
+
+        showToast("Não foi possível sair dos outros dispositivos. Verifique sua internet e tente de novo.", "error");
+
+        setBusy(button, false);
+
+    }
+
 }
