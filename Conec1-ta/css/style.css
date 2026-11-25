@@ -3310,7 +3310,7 @@ body.dark .logout-button .nav-icon {
 }
 
 .history-filters {
-  grid-template-columns: minmax(0, 1fr) 210px 180px;
+  grid-template-columns: minmax(0, 1fr) 170px 190px 170px;
 }
 
 .history-panel {
@@ -3520,3 +3520,446 @@ body.dark .logout-button .nav-icon {
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 #salas { display: none !important; }
+
+
+
+/* =========================================================
+ AJUSTE DE ZOOM
+ Quanto mais zoom no navegador, menor fica a "tela" do site.
+ Estas regras fazem o menu e o topo se adaptarem sem cortar nada.
+========================================================= */
+
+/* O menu lateral rola quando não cabe na altura da tela */
+.sidebar {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.sidebar .brand,
+.sidebar-bottom,
+.sidebar .logout-button {
+  flex-shrink: 0;
+}
+
+/* Telas largas, mas nem tanto (zoom de 125% a 200%) */
+@media (max-width: 1100px) and (min-width: 801px) {
+
+  :root {
+      --sidebar-width: 220px;
+  }
+
+  .main {
+      padding: 0 26px 40px;
+  }
+
+  .brand {
+      padding: 0 20px;
+  }
+
+}
+
+/* Telas baixas: menu e topo mais compactos */
+@media (max-height: 820px) {
+
+  .brand {
+      height: 68px;
+  }
+
+  .navigation {
+      padding: 12px 12px;
+      gap: 2px;
+  }
+
+  .nav-item {
+      padding: 9px 12px;
+  }
+
+  .sidebar-bottom {
+      padding: 10px 14px;
+  }
+
+  .system-status {
+      padding: 9px 11px;
+  }
+
+  .logout-button {
+      margin-bottom: 10px;
+  }
+
+  .topbar {
+      height: 72px;
+  }
+
+  .welcome {
+      min-height: 0;
+      padding: 26px 32px;
+  }
+
+  .welcome h2 {
+      font-size: clamp(24px, 3.2vw, 34px);
+      margin-bottom: 8px;
+  }
+
+  .welcome p {
+      line-height: 1.5;
+  }
+
+}
+
+@media (max-height: 560px) {
+
+  .brand {
+      height: 58px;
+  }
+
+  .navigation {
+      padding: 6px 10px;
+      gap: 0;
+  }
+
+  .nav-item {
+      padding: 7px 10px;
+      font-size: 13.5px;
+  }
+
+  .welcome {
+      padding: 20px 24px;
+      margin-bottom: 18px;
+  }
+
+  .welcome p {
+      display: none;
+  }
+
+}
+
+
+
+/* =========================================================
+ REPETIR EM DIAS DA SEMANA
+========================================================= */
+
+.repeat-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.day-chip {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.day-chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.day-chip span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.day-chip:hover span {
+  border-color: var(--primary);
+}
+
+.day-chip input:checked + span {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.day-chip input:focus-visible + span {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Sábado e domingo: aparecem, mas não dá para marcar */
+.day-chip.disabled {
+  cursor: not-allowed;
+}
+
+.day-chip.disabled span {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border-style: dashed;
+  text-decoration: line-through;
+  opacity: .7;
+}
+
+.day-chip.disabled:hover span {
+  border-color: var(--border);
+}
+
+.week-all-button {
+  align-self: flex-start;
+  text-align: left;
+  margin-top: 10px;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.week-all-button:hover {
+  text-decoration: underline;
+}
+
+
+
+/* =========================================================
+ CONFIGURAÇÕES DA CONTA
+========================================================= */
+
+.nav-item[data-section="configuracoes"] { --nc: #64748B; --nc-soft: #EEF1F5; }
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  align-items: start;
+}
+
+.settings-grid form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-grid form .primary-button,
+.settings-grid form .danger-button {
+  align-self: flex-start;
+}
+
+.settings-account {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  margin-bottom: 18px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.settings-account div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.settings-account strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-account small {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.settings-avatar {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  font-weight: 800;
+}
+
+.settings-hint {
+  margin: -4px 0 2px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.settings-danger {
+  grid-column: 1 / -1;
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+}
+
+.settings-danger .eyebrow {
+  color: var(--danger);
+}
+
+.settings-danger form {
+  max-width: 420px;
+}
+
+.settings-danger-text {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.settings-danger-text strong {
+  color: var(--text);
+}
+
+.settings-danger-text b {
+  color: var(--danger);
+}
+
+.system-status.clickable {
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.system-status.clickable:hover {
+  background: var(--primary-light);
+}
+
+/* Mostrar / esconder senha (mesmo botão da tela de login) */
+.senha-caixa {
+  position: relative;
+}
+
+.senha-caixa input {
+  width: 100%;
+  padding-right: 48px !important;
+}
+
+.senha-caixa input::-ms-reveal,
+.senha-caixa input::-ms-clear {
+  display: none;
+}
+
+.olho {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.olho:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.olho[aria-pressed="true"] {
+  color: var(--primary);
+}
+
+@media (max-width: 900px) {
+
+  .settings-grid {
+      grid-template-columns: 1fr;
+  }
+
+  .settings-grid form .primary-button,
+  .settings-grid form .danger-button {
+      align-self: stretch;
+  }
+
+}
+
+
+
+/* =========================================================
+ TAMANHO DO TEXTO (Configurações > Acessibilidade)
+ Aumenta o site inteiro por igual, sem quebrar o layout.
+========================================================= */
+
+html[data-fonte="grande"] {
+  zoom: 1.12;
+}
+
+html[data-fonte="extra"] {
+  zoom: 1.25;
+}
+
+.font-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.font-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 84px;
+  padding: 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.font-option:hover {
+  border-color: var(--primary);
+}
+
+.font-option.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.font-sample {
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text);
+}
+
+.font-option.active .font-sample {
+  color: var(--primary);
+}
+
+.settings-text {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.settings-signout {
+  align-self: flex-start;
+}
+
+@media (max-width: 900px) {
+  .settings-signout {
+      width: 100%;
+  }
+}
