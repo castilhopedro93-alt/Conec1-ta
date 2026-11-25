@@ -97,7 +97,7 @@ input:focus {
   border-color: var(--roxo);
 }
 
-.hidden { display: none; }
+.hidden { display: none !important; }
 
 /* ---------- Botões e links ---------- */
 
@@ -185,4 +185,51 @@ input:focus {
   }
 
   h1 { font-size: 2rem; }
+}
+
+
+/* ---------- Mostrar / esconder senha ---------- */
+
+.senha-caixa {
+  position: relative;
+}
+
+.senha-caixa input {
+  padding-right: 48px;
+}
+
+/* Esconde o "olho" que o Edge coloca sozinho, para não ficar duplicado */
+.senha-caixa input::-ms-reveal,
+.senha-caixa input::-ms-clear {
+  display: none;
+}
+
+.olho {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--suave);
+  cursor: pointer;
+}
+
+.olho:hover {
+  color: var(--texto);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.olho:focus-visible {
+  outline: 2px solid var(--roxo);
+  outline-offset: 1px;
+}
+
+.olho[aria-pressed="true"] {
+  color: var(--roxo);
 }
