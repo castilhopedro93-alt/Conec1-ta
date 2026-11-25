@@ -37,9 +37,16 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/bdsupa.js"></script>
 <script src="../js/sincronizar.js"></script>
+<script src="../js/mostrar-senha.js" defer></script>
 
 
 <script>
+    // Tamanho do texto escolhido nas Configurações (aplica antes de desenhar a página)
+    try {
+        const fonte = localStorage.getItem("conecta_fonte");
+        if (fonte === "grande" || fonte === "extra") document.documentElement.dataset.fonte = fonte;
+    } catch (erro) { /* navegador sem localStorage: fica no normal */ }
+
     const sessao = localStorage.getItem("usuarioLogado");
     if (!sessao) window.location.href = "login.html";
     const usuario = sessao ? JSON.parse(sessao) : null;
@@ -76,7 +83,6 @@
 
 
         <nav class="navigation">
-
             <button
                 class="nav-item active"
                 data-section="dashboard"
@@ -87,12 +93,27 @@
 
             <button
                 class="nav-item"
-                data-section="agenda"
+                data-section="criar-sala"
             >
-                <span class="nav-icon">▤</span>
-                <span>Agenda</span>
+                <span class="nav-icon">+</span>
+                <span>Criar Sala</span>
             </button>
 
+            <button
+                class="nav-item"
+                data-section="buscar-sala"
+            >
+                <span class="nav-icon">⌕</span>
+                <span>Buscar salas</span>
+            </button>
+
+            <button
+                class="nav-item"
+                data-section="minhas-reservas"
+            >
+                <span class="nav-icon">★</span>
+                <span>Minhas reservas</span>
+            </button>
 
             <button
                 class="nav-item"
@@ -101,19 +122,13 @@
                 <span class="nav-icon">✓</span>
                 <span>Reservas</span>
             </button>
+
             <button
                 class="nav-item"
-                data-section="buscar-sala"
+                data-section="agenda"
             >
-                <span class="nav-icon">⌕</span>
-                <span>Buscar salas</span>
-            </button>
-            <button
-                class="nav-item"
-                data-section="minhas-reservas"
-            >
-                <span class="nav-icon">★</span>
-                <span>Minhas reservas</span>
+                <span class="nav-icon">▤</span>
+                <span>Agenda</span>
             </button>
 
             <button
@@ -134,10 +149,10 @@
 
             <button
                 class="nav-item"
-                data-section="criar-sala"
+                data-section="configuracoes"
             >
-                <span class="nav-icon">+</span>
-                <span>Criar Sala</span>
+                <span class="nav-icon">▥</span>
+                <span>Configurações</span>
             </button>
 
         </nav>
@@ -730,6 +745,12 @@
 
                 </div>
 
+                <select id="historyPeriod">
+                    <option value="7" selected>Últimos 7 dias</option>
+                    <option value="30">Últimos 30 dias</option>
+                    <option value="all">Todo o histórico</option>
+                </select>
+
                 <select id="historyType">
                     <option value="all">Todas as ações</option>
                     <option value="criada">Reservas feitas</option>
@@ -1095,6 +1116,205 @@
 
         </section>
 
+
+        <!-- =================================================
+             CONFIGURAÇÕES DA CONTA
+        ================================================== -->
+
+        <section
+            class="page-section"
+            id="configuracoes"
+        >
+
+            <div class="section-toolbar">
+
+                <div>
+
+                    <span class="eyebrow">
+                        MINHA CONTA
+                    </span>
+
+                    <h2>Configurações</h2>
+
+                </div>
+
+            </div>
+
+
+            <div class="settings-grid">
+
+                <!-- Perfil -->
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <div>
+                            <span class="eyebrow">PERFIL</span>
+                            <h3>Seus dados</h3>
+                        </div>
+                    </div>
+
+                    <div class="settings-account">
+                        <span class="settings-avatar" id="settingsAvatar">?</span>
+                        <div>
+                            <strong id="settingsEmail">—</strong>
+                            <small id="settingsRole">Usuário</small>
+                        </div>
+                    </div>
+
+                    <form id="profileForm" novalidate>
+
+                        <div class="form-field full">
+                            <label for="settingsName">Nome</label>
+                            <input
+                                type="text"
+                                id="settingsName"
+                                maxlength="60"
+                                autocomplete="name"
+                            >
+                        </div>
+
+                        <p class="settings-hint">
+                            O nome aparece no menu, nas suas reservas e no histórico.
+                            O e-mail não pode ser trocado por aqui.
+                        </p>
+
+                        <button class="primary-button" type="submit" id="profileSave">
+                            Salvar nome
+                        </button>
+
+                    </form>
+
+                </div>
+
+
+                <!-- Senha -->
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <div>
+                            <span class="eyebrow">SEGURANÇA</span>
+                            <h3>Trocar senha</h3>
+                        </div>
+                    </div>
+
+                    <form id="passwordForm" novalidate>
+
+                        <div class="form-field full">
+                            <label for="currentPassword">Senha atual</label>
+                            <input type="password" id="currentPassword" autocomplete="current-password">
+                        </div>
+
+                        <div class="form-field full">
+                            <label for="newPassword">Nova senha</label>
+                            <input type="password" id="newPassword" autocomplete="new-password">
+                        </div>
+
+                        <div class="form-field full">
+                            <label for="confirmPassword">Confirmar nova senha</label>
+                            <input type="password" id="confirmPassword" autocomplete="new-password">
+                        </div>
+
+                        <p class="settings-hint">Pelo menos 6 caracteres.</p>
+
+                        <button class="primary-button" type="submit" id="passwordSave">
+                            Trocar senha
+                        </button>
+
+                    </form>
+
+                </div>
+
+
+                <!-- Acessibilidade -->
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <div>
+                            <span class="eyebrow">ACESSIBILIDADE</span>
+                            <h3>Tamanho do texto</h3>
+                        </div>
+                    </div>
+
+                    <div class="font-options" id="fontOptions" role="radiogroup" aria-label="Tamanho do texto">
+                        <button type="button" class="font-option" data-fonte="normal" role="radio">
+                            <span class="font-sample" style="font-size:15px">Aa</span>
+                            Normal
+                        </button>
+                        <button type="button" class="font-option" data-fonte="grande" role="radio">
+                            <span class="font-sample" style="font-size:19px">Aa</span>
+                            Grande
+                        </button>
+                        <button type="button" class="font-option" data-fonte="extra" role="radio">
+                            <span class="font-sample" style="font-size:23px">Aa</span>
+                            Extra grande
+                        </button>
+                    </div>
+
+                    <p class="settings-hint">
+                        Aumenta textos, botões e ícones do site inteiro. Fica salvo neste navegador.
+                    </p>
+
+                </div>
+
+
+                <!-- Sessões -->
+                <div class="panel">
+
+                    <div class="panel-header">
+                        <div>
+                            <span class="eyebrow">SESSÕES</span>
+                            <h3>Dispositivos conectados</h3>
+                        </div>
+                    </div>
+
+                    <p class="settings-text">
+                        Esqueceu a conta aberta num computador da escola ou no celular de alguém?
+                        Saia de todos os lugares de uma vez. Depois, é só entrar de novo aqui.
+                    </p>
+
+                    <button class="secondary-button settings-signout" type="button" id="signOutEverywhere">
+                        Sair de todos os dispositivos
+                    </button>
+
+                </div>
+
+
+                <!-- Excluir conta -->
+                <div class="panel settings-danger">
+
+                    <div class="panel-header">
+                        <div>
+                            <span class="eyebrow">ZONA DE PERIGO</span>
+                            <h3>Excluir conta</h3>
+                        </div>
+                    </div>
+
+                    <p class="settings-danger-text">
+                        Sua conta será apagada e você não conseguirá mais entrar com este e-mail.
+                        <strong id="deleteFutureInfo">Suas reservas futuras serão canceladas.</strong>
+                        As reservas que já aconteceram continuam no histórico.
+                        <b>Não dá para desfazer.</b>
+                    </p>
+
+                    <form id="deleteAccountForm" novalidate>
+
+                        <div class="form-field full">
+                            <label for="deletePassword">Digite sua senha para confirmar</label>
+                            <input type="password" id="deletePassword" autocomplete="current-password">
+                        </div>
+
+                        <button class="danger-button" type="submit" id="deleteAccountButton">
+                            Excluir minha conta
+                        </button>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </section>
+
     </main>
 
 
@@ -1215,9 +1435,40 @@
                                 Não repetir
                             </option>
                             <option value="weekly">
-                                Toda semana
+                                Repetir em dias da semana
                             </option>
                         </select>
+
+                    </div>
+
+
+                    <div
+                        class="form-field full repeat-field"
+                        id="repeatDaysField"
+                        hidden
+                    >
+
+                        <label>
+                            Repetir em
+                        </label>
+
+                        <div class="repeat-days" id="repeatDays">
+                            <label class="day-chip"><input type="checkbox" value="1"><span>Seg</span></label>
+                            <label class="day-chip"><input type="checkbox" value="2"><span>Ter</span></label>
+                            <label class="day-chip"><input type="checkbox" value="3"><span>Qua</span></label>
+                            <label class="day-chip"><input type="checkbox" value="4"><span>Qui</span></label>
+                            <label class="day-chip"><input type="checkbox" value="5"><span>Sex</span></label>
+                            <label class="day-chip disabled" title="Não há reservas aos sábados"><input type="checkbox" value="6" disabled><span>Sáb</span></label>
+                            <label class="day-chip disabled" title="Não há reservas aos domingos"><input type="checkbox" value="0" disabled><span>Dom</span></label>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="week-all-button"
+                            id="repeatWholeWeek"
+                        >
+                            Marcar a semana toda
+                        </button>
 
                     </div>
 
