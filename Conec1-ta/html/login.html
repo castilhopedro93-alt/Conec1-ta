@@ -6,6 +6,14 @@
 <title>Entrar • Conec-ta</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../css/login.css">
+<script src="../js/mostrar-senha.js" defer></script>
+<script>
+    // Tamanho do texto escolhido nas Configurações (aplica antes de desenhar a página)
+    try {
+        const fonte = localStorage.getItem("conecta_fonte");
+        if (fonte === "grande" || fonte === "extra") document.documentElement.dataset.fonte = fonte;
+    } catch (erro) { /* navegador sem localStorage: fica no normal */ }
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/bdsupa.js"></script>
@@ -84,6 +92,16 @@
     const el = $("msg");
     el.textContent = texto;
     el.className = "msg " + (tipo || "");
+  }
+
+  // Volta para cá depois de excluir a conta
+  if (new URLSearchParams(window.location.search).get("conta") === "excluida") {
+    mostrar("Sua conta foi excluída.", "ok");
+  }
+
+  // Volta para cá depois de "Sair de todos os dispositivos"
+  if (new URLSearchParams(window.location.search).get("saiu") === "todos") {
+    mostrar("Você saiu de todos os dispositivos. Entre de novo para continuar.", "ok");
   }
 
   /* ---------- Os três modos da tela ---------- */
