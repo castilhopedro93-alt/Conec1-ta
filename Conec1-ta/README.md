@@ -280,7 +280,7 @@ Uma pessoa vira administradora quando o e-mail dela é adicionado à tabela `adm
 
 ## Equipe
 
-- **Pedro Castilho**
+- **Pedro**
 - **André**
 
 Trabalho de Conclusão de Curso — 2026.
