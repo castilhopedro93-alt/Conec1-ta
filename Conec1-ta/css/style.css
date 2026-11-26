@@ -3963,3 +3963,46 @@ html[data-fonte="extra"] {
       width: 100%;
   }
 }
+.toast-lembrete {
+  position: relative;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 340px;
+  max-width: 440px;
+  padding: 20px 46px 20px 20px;
+  border-left-width: 5px;
+}
+
+.toast-lembrete .toast-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  font-size: 17px;
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.toast-lembrete strong {
+  font-size: 15px;
+}
+
+.toast-lembrete p {
+  margin-top: 5px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.toast-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 1.4rem;
+  line-height: 1;
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.toast-close:hover { opacity: 1; }

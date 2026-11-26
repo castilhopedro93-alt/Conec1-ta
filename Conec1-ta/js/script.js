@@ -270,6 +270,7 @@ async function initialize() {
     setupReport();
     setupSettings();
     renderAll();
+    if (typeof iniciarAvisos === "function") iniciarAvisos();
 
 
     // Atualiza a cada minuto o que depende da hora atual
