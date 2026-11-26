@@ -170,11 +170,19 @@
 
       // ----- Recuperar senha -----
       if (modo === "recuperar") {
+        const espera = segundosDeEspera();
+        if (espera) return mostrar(textoDeEspera(espera), "error");
+
+        iniciarEspera(60);
+
         const { error } = await db.auth.resetPasswordForEmail(email, {
           redirectTo: new URL("redefinir.html", window.location.href).href
         });
 
-        if (error) return mostrar(traduzirErro(error), "error");
+        if (error) {
+          if (ehLimiteDeEmail(error)) iniciarEspera(300);
+          return mostrar(traduzirErro(error), "error");
+        }
 
         return mostrar("Se esse e-mail tiver uma conta, enviamos um link para criar uma nova senha. Veja também o spam.", "ok");
       }
@@ -188,6 +196,11 @@
         if (senha.length < 6) return mostrar("A senha precisa ter pelo menos 6 caracteres.", "error");
         if (senha !== $("confirma").value) return mostrar("As senhas não são iguais.", "error");
 
+        const espera = segundosDeEspera();
+        if (espera) return mostrar(textoDeEspera(espera), "error");
+
+        iniciarEspera(60);
+
         const { data, error } = await db.auth.signUp({
           email,
           password: senha,
@@ -197,7 +210,10 @@
           }
         });
 
-        if (error) return mostrar(traduzirErro(error), "error");
+        if (error) {
+          if (ehLimiteDeEmail(error)) iniciarEspera(300);
+          return mostrar(traduzirErro(error), "error");
+        }
 
         // E-mail já cadastrado: o Supabase devolve um usuário sem identidades
         if (data.user && data.user.identities && data.user.identities.length === 0) {
@@ -272,14 +288,52 @@
 
   }
 
+  function ehLimiteDeEmail(error) {
+    const msg = (error.message || "").toLowerCase();
+    return error.code === "over_email_send_rate_limit" || msg.includes("email rate limit");
+  }
+
   function traduzirErro(error) {
     const msg = (error.message || "").toLowerCase();
+
+    if (ehLimiteDeEmail(error)) {
+      return "O limite de e-mails por hora foi atingido. Aguarde cerca de 1 hora e tente de novo.";
+    }
+    if (error.code === "over_request_rate_limit" || error.status === 429 || msg.includes("rate limit")) {
+      return "Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.";
+    }
     if (msg.includes("invalid login")) return "E-mail ou senha incorretos.";
     if (msg.includes("not confirmed")) return "Confirme seu e-mail antes de entrar (veja a caixa de entrada e o spam).";
     if (msg.includes("already registered")) return "Este e-mail já está cadastrado. Use a opção Entrar.";
-    if (msg.includes("rate limit")) return "Muitas tentativas. Aguarde um pouco e tente de novo.";
     if (msg.includes("password")) return "Senha inválida. Use pelo menos 6 caracteres.";
     return "Erro: " + error.message;
+  }
+
+  /* ---------- Espera entre pedidos de e-mail ---------- */
+
+  const ESPERA_EMAIL = "conecta_espera_email";
+
+  function segundosDeEspera() {
+    try {
+      const ate = Number(sessionStorage.getItem(ESPERA_EMAIL) || 0);
+      return Math.max(0, Math.ceil((ate - Date.now()) / 1000));
+    } catch (erro) {
+      return 0;
+    }
+  }
+
+  function iniciarEspera(segundos) {
+    try {
+      sessionStorage.setItem(ESPERA_EMAIL, String(Date.now() + segundos * 1000));
+    } catch (erro) {
+      // sem armazenamento: só não guarda a espera
+    }
+  }
+
+  function textoDeEspera(segundos) {
+    return segundos > 90
+      ? `Aguarde ${Math.ceil(segundos / 60)} minutos para pedir outro e-mail.`
+      : `Aguarde ${segundos} segundos para pedir outro e-mail.`;
   }
 </script>
 
